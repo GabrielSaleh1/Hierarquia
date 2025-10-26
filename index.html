@@ -26,26 +26,11 @@
   .flag.true .dot{background:rgb(34,197,94)}
   .flag.false .dot{background:rgb(239,68,68)}
 
-  /* ======== CORREÇÃO DE CONTRASTE PARA SELECT (mantendo design) ======== */
-  select {
-    background-color: #0d1322 !important;  /* fundo escuro igual ao painel */
-    color: #e5e7eb !important;             /* texto claro */
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 6px;
-    padding: 4px 6px;
-    font-weight: 500;
-    cursor: pointer;
-    appearance: none;
-  }
-  select option {
-    background-color: #0d1322 !important;  /* fundo das opções */
-    color: #e5e7eb !important;
-  }
-  select:focus {
-    outline: 2px solid #facc15;            /* destaque no foco */
-    outline-offset: 1px;
-  }
-  :root, select, select option { color-scheme: dark; } /* força menu escuro */
+  /* Correção de contraste para selects em tema escuro */
+  select{background-color:#0d1322!important;color:#e5e7eb!important;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:4px 6px;font-weight:500;cursor:pointer;appearance:none}
+  select option{background-color:#0d1322!important;color:#e5e7eb!important}
+  select:focus{outline:2px solid #facc15; outline-offset:1px}
+  :root,select,select option{color-scheme:dark}
 </style>
 </head>
 <body class="dark text-slate-100">
@@ -106,7 +91,7 @@ const COLUMNS = [
   { key:"funcao",          label:"Função",                width:"32rem", type:"text", wrap:true }, /* texto longo */
 
   { key:"edital",          label:"Edital",                width:"10rem", type:"text" },
-  { key:"situacao",        label:"Situação",              width:"11rem", type:"select", options:["ATIVO","AFastado","Férias","Afastamento Médico","Punição","Reserva"] },
+  { key:"situacao",        label:"Situação",              width:"11rem", type:"select", options:["ATIVO","Afastado","Férias","Afastamento Médico","Punição","Reserva"] },
   { key:"licenca_premium", label:"Licença Premium",       width:"12rem", type:"flag", trueLabel:"ATIVA", falseLabel:"INATIVA" },
   { key:"ultima_promocao", label:"Última Promoção",       width:"12rem", type:"date" },
   { key:"turma",           label:"Turma",                 width:"9rem",  type:"text" },
@@ -118,11 +103,11 @@ const COLUMNS = [
 
 /* ======== GRADUAÇÃO por Patente (agrupamento automático) ======== */
 const GRAD_ORDER = [
-  { label:"Oficiais Superiores",  match: p => /(^CEL\b|TEN\.?CEL|MAJ)/i.test(p) },
-  { label:"Oficiais Intermediários", match: p => /\bCAP\b/i.test(p) },
-  { label:"Oficiais Subalternos", match: p => /(1º\s*TEN|2º\s*TEN|ASP)/i.test(p) },
-  { label:"Praças Graduados",     match: p => /(SUBTEN|SGT|CB|SD)/i.test(p) },
-  { label:"Outros",               match: p => true },
+  { label:"Oficiais Superiores",    match: p => /(^CEL\b|TEN\.?CEL|MAJ)/i.test(p) },
+  { label:"Oficiais Intermediários",match: p => /\bCAP\b/i.test(p) },
+  { label:"Oficiais Subalternos",   match: p => /(1º\s*TEN|2º\s*TEN|ASP)/i.test(p) },
+  { label:"Praças Graduados",       match: p => /(SUBTEN|SGT|CB|SD)/i.test(p) },
+  { label:"Outros",                 match: p => true },
 ];
 function patenteToGraduacao(patente="") {
   const p = String(patente).toUpperCase();
@@ -211,39 +196,57 @@ function renderDataRow(row, idx){
   });
 }
 
+/* ---------- RENDER BODY: respeita seções personalizadas ---------- */
 function renderBody(){
   sheetEl.innerHTML=""; renderHeader();
 
-  // filtra por busca
   const q=normalize(state.q);
-  let rows=ROWS.filter(r=>{
-    if (!q) return true;
+  const filtered = ROWS.filter(r=>{
+    if(r.type==="section") return true;
+    if(!q) return true;
     return COLUMNS.some(col=>normalize(r[col.key]).includes(q));
   });
 
-  // ordena por graduação (com base na patente) e depois por patente/nome
-  rows.sort((a,b)=>{
-    const ga = GRAD_ORDER.findIndex(g => g.label===patenteToGraduacao(a.patente));
-    const gb = GRAD_ORDER.findIndex(g => g.label===patenteToGraduacao(b.patente));
-    if (ga!==gb) return ga-gb;
-    const pa = normalize(a.patente), pb = normalize(b.patente);
-    if (pa!==pb) return pa<pb?-1:1;
-    const na = normalize(a.nome), nb = normalize(b.nome);
-    return na<nb?-1:na>nb?1:0;
-  });
+  const hasCustomSections = filtered.some(r => r.type==="section");
 
-  // insere seções automáticas quando muda a graduação
-  let currentGrad = null;
-  rows.forEach((row, i) => {
-    const grad = patenteToGraduacao(row.patente);
-    if (grad !== currentGrad) {
-      currentGrad = grad;
-      const s=document.createElement('div');
-      s.className="section"; s.textContent=grad;
-      sheetEl.appendChild(s);
-    }
-    renderDataRow(row, i);
-  });
+  if (hasCustomSections) {
+    // Respeita a ordem e as seções criadas pelo usuário
+    filtered.forEach((row, i) => {
+      if (row.type==="section") {
+        const s=document.createElement('div');
+        s.className="section"; s.textContent=row.title || "SEÇÃO";
+        sheetEl.appendChild(s);
+      } else {
+        renderDataRow(row, i);
+      }
+    });
+  } else {
+    // Sem seções personalizadas: agrupar automaticamente por graduação
+    const rows = filtered.slice();
+
+    // ordena: graduação > patente > nome
+    rows.sort((a,b)=>{
+      const ga = GRAD_ORDER.findIndex(g => g.label===patenteToGraduacao(a.patente));
+      const gb = GRAD_ORDER.findIndex(g => g.label===patenteToGraduacao(b.patente));
+      if (ga!==gb) return ga-gb;
+      const pa = normalize(a.patente), pb = normalize(b.patente);
+      if (pa!==pb) return pa<pb?-1:1;
+      const na = normalize(a.nome), nb = normalize(b.nome);
+      return na<nb?-1:na>nb?1:0;
+    });
+
+    let currentGrad=null;
+    rows.forEach((row,i)=>{
+      const grad = patenteToGraduacao(row.patente);
+      if (grad !== currentGrad) {
+        currentGrad = grad;
+        const s=document.createElement('div');
+        s.className="section"; s.textContent=grad;
+        sheetEl.appendChild(s);
+      }
+      renderDataRow(row,i);
+    });
+  }
 }
 
 function refresh(){ computeCols(); renderBody(); }
@@ -253,18 +256,26 @@ computeCols(); renderBody();
 document.getElementById('q').addEventListener('input',e=>{ state.q=e.target.value; renderBody(); });
 document.getElementById('density').addEventListener('change',e=>{
   const h=parseInt(e.target.value,10);
+  // aplica na próxima render
   document.querySelectorAll('.cell').forEach(el=>el.style.minHeight=h+'px');
 });
 
 /* ===================== CONTROLES ===================== */
 document.getElementById('addRow').addEventListener('click',()=>{
-  ROWS.push(Object.fromEntries(COLUMNS.map(c=>[c.key,""])));
+  // cria linha nova "normal", sem virar seção nem "Outros"
+  const base = Object.fromEntries(COLUMNS.map(c=>[c.key,""]));
+  base.patente = "CB PM"; // padrão para não cair em "Outros"
+  ROWS.push(base);
   persist(); refresh();
 });
+
 document.getElementById('addSection').addEventListener('click',()=>{
-  const title=prompt("Título da seção personalizada:","COMANDO AGUIAR");
-  if(title){ ROWS.push({custom_section:title}); persist(); refresh(); }
+  const title = prompt("Título da seção personalizada:", "NOVA SEÇÃO");
+  const t = (title||"").trim();
+  ROWS.push({ type:"section", title: t || "NOVA SEÇÃO" });
+  persist(); refresh();
 });
+
 document.getElementById('delLast').addEventListener('click',()=>{ ROWS.pop(); persist(); refresh(); });
 
 document.getElementById('saveJson').addEventListener('click',()=>{
@@ -299,6 +310,7 @@ document.getElementById('loadCsv').addEventListener('change',e=>{
 document.getElementById('saveCsv').addEventListener('click',()=>{
   const rows=[]; rows.push(COLUMNS.map(c=>c.label));
   ROWS.forEach(r=>{
+    if(r.type==="section") return; // não exporta as seções personalizadas
     const arr=COLUMNS.map(col=>{
       let v=r[col.key]??"";
       if(col.type==='flag') v=(v?(col.trueLabel||'SIM'):(col.falseLabel||'NÃO'));
