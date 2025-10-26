@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hierarquia do Batalhão — Beta</title>
+  <meta name="description" content="Visualização de hierarquia do batalhão (GTA RP) a partir de Google Sheets CSV" />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: {} } }
+  </script>
+  <style>
+    html, body { height: 100%; }
+    body { background: #020617; } /* slate-950 */
+    th button { display:inline-flex; align-items:center; gap:.35rem }
+    .table-wrap { overflow:auto; max-height: calc(100vh - 220px); }
+    .cell { white-space: nowrap; }
+  </style>
+</head>
+<body class="dark text-slate-100">
+  <div class="max-w-7xl mx-auto px-4 py-6">
+    <header class="mb-4 flex items-center gap-3">
+      <div class="h-10 w-10 rounded-lg grid place-items-center font-black border border-amber-500/40 bg-slate-900/60">R</div>
+      <div>
+        <h1 class="text-xl font-bold">Hierarquia do Batalhão — Beta</h1>
+        <p class="text-sm text-slate-400">Carrega dados direto do Google Sheets (CSV público)</p>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <button id="btnReload" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-sm">Recarregar</button>
+        <button id="btnExport" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-sm">Exportar CSV (filtrado)</button>
+      </div>
+    </header>
+
+    <section class="mb-3 grid md:grid-cols-3 gap-3">
+      <div class="md:col-span-2">
+        <label class="text-sm text-slate-400">Buscar (qualquer coluna)</label>
+        <input id="q" class="w-full mt-1 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60" placeholder="nome, matrícula, patente, seção..." />
+      </div>
+      <div>
+        <label class="text-sm text-slate-400">Linhas por página</label>
+        <select id="pageSize" class="w-full mt-1 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60">
+          <option>10</option><option selected>25</option><option>50</option><option>100</option><option>200</option>
+        </select>
+      </div>
+    </section>
+
+    <div id="status" class="mb-3 text-sm text-slate-400">Pronto.</div>
+
+    <div class="rounded-xl border border-white/10 bg-slate-900/40">
+      <div class="table-wrap" id="tableWrap">
+        <table class="w-full text-sm" id="tbl">
+          <thead id="thead" class="sticky top-0 bg-slate-900/80 backdrop-blur">
+          </thead>
+          <tbody id="tbody">
+          </tbody>
+        </table>
+      </div>
+      <div class="p-3 flex items-center gap-2 border-t border-white/10">
+        <button id="prev" class="px-3 py-1 rounded border border-white/10 hover:bg-white/5 text-xs">Anterior</button>
+        <button id="next" class="px-3 py-1 rounded border border-white/10 hover:bg-white/5 text-xs">Próxima</button>
+        <div class="text-xs text-slate-400 ml-2" id="pagerInfo">—</div>
+        <div class="ml-auto text-xs text-slate-500">v0.1</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============== CONFIG DA PLANILHA ==============
+    // Usei a sua planilha de "Hierarquia do Batalhão"
+    const SHEET_ID = "1bXgtno91ejesF4uXS7gY4OD-YZqhWXLAobKjwcEH5mI";
+    const GID = "0"; // mude se quiser outra aba da planilha
+
+    function sheetCsvUrl(id, gid) {
+      return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+    }
+
+    // ============== PARSER CSV (simples e robusto) ==============
+    function parseCSV(text) {
+      const rows = [];
+      let i = 0, field = "", row = [], inQuotes = false;
+      while (i < text.length) {
+        const c = text[i];
+        if (inQuotes) {
+          if (c === '"') {
+            if (text[i+1] === '"') { field += '"'; i++; } else { inQuotes = false; }
+          } else { field += c; }
+        } else {
+          if (c === '"') inQuotes = true;
+          else if (c === ',') { row.push(field); field = ""; }
+          else if (c === '\n' || c === '\r') {
+            if (field.length || row.length) { row.push(field); rows.push(row); row = []; field = ""; }
+            if (c === '\r' && text[i+1] === '\n') i++;
+          } else { field += c; }
+        }
+        i++;
+      }
+      if (field.length || row.length) { row.push(field); rows.push(row); }
+      return rows;
+    }
+
+    // ============== ESTADO GLOBAL SIMPLES ==============
+    const state = {
+      headers: [],
+      rows: [],
+      filtered: [],
+      sort: { col: -1, dir: 1 }, // 1=asc, -1=desc
+      page: 1,
+      pageSize: 25,
+      q: ""
+    };
+
+    // ============== UTIL ==============
+    function setStatus(msg, level="info") {
+      const el = document.getElementById("status");
+      el.textContent = msg;
+      el.className = "mb-3 text-sm " + (level === "error" ? "text-red-400" : "text-slate-400");
+    }
+
+    function normalize(s) {
+      return String(s || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+    }
+
+    // ============== RENDER ==============
+    function renderTable() {
+      const thead = document.getElementById("thead");
+      const tbody = document.getElementById("tbody");
+
+      // Cabeçalho
+      thead.innerHTML = "";
+      const trh = document.createElement("tr");
+      state.headers.forEach((h, idx) => {
+        const th = document.createElement("th");
+        th.className = "text-left sticky top-0 z-10 border-b border-white/10";
+        const btn = document.createElement("button");
+        btn.className = "px-3 py-2 w-full hover:bg-white/5";
+        btn.innerHTML = `<span>${h || "-"}</span>${state.sort.col===idx ? (state.sort.dir===1 ? "▲" : "▼") : ""}`;
+        btn.addEventListener("click", () => {
+          if (state.sort.col === idx) state.sort.dir *= -1;
+          else { state.sort.col = idx; state.sort.dir = 1; }
+          applyFilterAndSort();
+          renderBody();
+        });
+        th.appendChild(btn);
+        trh.appendChild(th);
+      });
+      thead.appendChild(trh);
+
+      renderBody();
+    }
+
+    function renderBody() {
+      const tbody = document.getElementById("tbody");
+      const pagerInfo = document.getElementById("pagerInfo");
+      tbody.innerHTML = "";
+
+      const start = (state.page - 1) * state.pageSize;
+      const end = start + state.pageSize;
+      const pageRows = state.filtered.slice(start, end);
+
+      pageRows.forEach(r => {
+        const tr = document.createElement("tr");
+        tr.className = "border-t border-white/5";
+        r.forEach(cell => {
+          const td = document.createElement("td");
+          td.className = "cell px-3 py-2";
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+
+      const totalPages = Math.max(1, Math.ceil(state.filtered.length / state.pageSize));
+      pagerInfo.textContent = `Página ${state.page} de ${totalPages} — ${state.filtered.length} registros`;
+      document.getElementById("prev").disabled = state.page <= 1;
+      document.getElementById("next").disabled = state.page >= totalPages;
+    }
+
+    // ============== FILTRO/ORDENAÇÃO ==============
+    function applyFilterAndSort() {
+      const qn = normalize(state.q);
+      state.filtered = state.rows.filter(r => {
+        if (!qn) return true;
+        return r.some(v => normalize(v).includes(qn));
+      });
+
+      if (state.sort.col >= 0) {
+        const c = state.sort.col, d = state.sort.dir;
+        state.filtered.sort((a, b) => {
+          const A = normalize(a[c]), B = normalize(b[c]);
+          if (A < B) return -1 * d;
+          if (A > B) return  1 * d;
+          return 0;
+        });
+      }
+      state.page = 1; // volta para primeira
+    }
+
+    // ============== EXPORTAR ==============
+    function exportFilteredCSV() {
+      const rows = [state.headers, ...state.filtered];
+      const esc = (s) => /[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g,'""')}"` : String(s);
+      const csv = rows.map(r => r.map(esc).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "hierarquia-filtrada.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    // ============== CARREGAR PLANILHA ==============
+    async function loadSheet() {
+      try {
+        setStatus("Baixando planilha…");
+        const url = sheetCsvUrl(SHEET_ID, GID);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Não foi possível baixar o CSV. Verifique se a planilha está pública (Leitor).");
+        const txt = await res.text();
+        const data = parseCSV(txt);
+
+        const [headers, ...rows] = data;
+        state.headers = headers || [];
+        state.rows = rows || [];
+        applyFilterAndSort();
+        renderTable();
+        setStatus("Planilha carregada com sucesso.");
+      } catch (e) {
+        setStatus(e.message || "Erro ao carregar planilha.", "error");
+      }
+    }
+
+    // ============== WIRE-UP UI ==============
+    document.getElementById("q").addEventListener("input", (e) => {
+      state.q = e.target.value;
+      applyFilterAndSort();
+      renderBody();
+    });
+
+    document.getElementById("pageSize").addEventListener("change", (e) => {
+      state.pageSize = parseInt(e.target.value, 10);
+      state.page = 1;
+      renderBody();
+    });
+
+    document.getElementById("prev").addEventListener("click", () => {
+      if (state.page > 1) { state.page--; renderBody(); }
+    });
+    document.getElementById("next").addEventListener("click", () => {
+      const totalPages = Math.max(1, Math.ceil(state.filtered.length / state.pageSize));
+      if (state.page < totalPages) { state.page++; renderBody(); }
+    });
+
+    document.getElementById("btnReload").addEventListener("click", loadSheet);
+    document.getElementById("btnExport").addEventListener("click", exportFilteredCSV);
+
+    // início
+    loadSheet();
+  </script>
+</body>
+</html>
