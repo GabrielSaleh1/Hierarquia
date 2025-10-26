@@ -1,242 +1,255 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hierarquia ROTA</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-body {
-  background-color: #0a0f1c;
-  color: #e5e7eb;
-  font-family: 'Inter', sans-serif;
-  padding: 20px;
-}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hierarquia ROTA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-/* tabela e cabeçalho */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #0d1322;
-  border-radius: 10px;
-  overflow: hidden;
-  min-width: 1000px;
-}
+  <style>
+    body {
+      background-color: #0a0f1c;
+      color: #e5e7eb;
+      font-family: 'Inter', sans-serif;
+      padding: 20px;
+    }
 
-thead th {
-  background-color: #11182b;
-  text-align: left;
-  padding: 10px;
-  border-bottom: 2px solid #1f2937;
-  font-weight: 700;
-  white-space: nowrap;
-}
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #0d1322;
+      border-radius: 10px;
+      overflow: hidden;
+      min-width: 1000px;
+    }
 
-tbody td {
-  padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
+    thead th {
+      background-color: #11182b;
+      text-align: left;
+      padding: 10px;
+      border-bottom: 2px solid #1f2937;
+      font-weight: 700;
+      white-space: nowrap;
+    }
 
-/* dropdowns */
-select {
-  background-color: #0b1220 !important;
-  color: #e5e7eb !important;
-  border: 1px solid rgba(255,255,255,.25);
-  font-weight: 600;
-  border-radius: 6px;
-  padding: 4px 6px;
-  appearance: none;
-  cursor: pointer;
-}
-select option {
-  background-color: #0b1220;
-  color: #e5e7eb;
-}
-:root, select, select option { color-scheme: dark; }
+    tbody td {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
 
-/* status bolinhas */
-.status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-.status.verde {
-  background: rgba(34,197,94,0.15);
-  color: #22c55e;
-}
-.status.vermelho {
-  background: rgba(239,68,68,0.15);
-  color: #ef4444;
-}
+    /* ======== CORREÇÃO DE CONTRASTE PARA SELECT ======== */
+    select {
+      background-color: #0d1322 !important;  /* fundo escuro */
+      color: #e5e7eb !important;             /* texto claro */
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      padding: 4px 6px;
+      font-weight: 500;
+      cursor: pointer;
+      appearance: none;
+    }
 
-.grad-section {
-  background: #1a2034;
-  color: #facc15;
-  font-weight: 700;
-  text-transform: uppercase;
-  padding: 6px 12px;
-}
-</style>
+    select option {
+      background-color: #0d1322 !important;  /* fundo das opções */
+      color: #e5e7eb !important;
+    }
+
+    select:focus {
+      outline: 2px solid #facc15;  /* borda amarela ao focar */
+      outline-offset: 1px;
+    }
+
+    :root, select, select option { color-scheme: dark; }
+
+    /* Status (bolinhas coloridas) */
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .status.verde {
+      background: rgba(34,197,94,0.15);
+      color: #22c55e;
+    }
+    .status.vermelho {
+      background: rgba(239,68,68,0.15);
+      color: #ef4444;
+    }
+
+    /* Cabeçalho de graduação */
+    .grad-section {
+      background: #1a2034;
+      color: #facc15;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 6px 12px;
+    }
+  </style>
 </head>
+
 <body>
-<h1 class="text-2xl font-black mb-4">📋 Hierarquia do Batalhão</h1>
-<div class="overflow-x-auto">
-  <table>
-    <thead>
-      <tr>
-        <th>Matrícula</th>
-        <th>Nome</th>
-        <th>Nome de Guerra</th>
-        <th>Patente</th>
-        <th>Função</th>
-        <th>Edital</th>
-        <th>Situação</th>
-        <th>Licença Premium</th>
-        <th>Última Promoção</th>
-        <th>Turma</th>
-        <th>CIA</th>
-        <th>Data de Entrada</th>
-        <th>Padrinhos</th>
-        <th>PAD</th>
-      </tr>
-    </thead>
-    <tbody id="tabela">
-      <tr class="grad-section"><td colspan="14">COMANDO AGUIAR</td></tr>
-      <tr>
-        <td>2410202230</td>
-        <td>Matheus Bezerra</td>
-        <td>Bezerra</td>
-        <td>
-          <select>
-            <option>TEN.CEL PM</option>
-            <option>MAJ PM</option>
-            <option>CAP PM</option>
-            <option>1º TEN PM</option>
-            <option>SUBTEN PM</option>
-          </select>
-        </td>
-        <td>COMANDANTE AGUIAR / COMANDANTE SINDICÂNCIA / COMANDANTE CCOMSOC</td>
-        <td>AGUIAR-2025</td>
-        <td>
-          <select>
-            <option>ATIVO</option>
-            <option>Afastado</option>
-            <option>Férias</option>
-            <option>Afastamento Médico</option>
-            <option>Punição</option>
-            <option>Reserva</option>
-          </select>
-        </td>
-        <td><span class="status verde">✔ VERDADEIRO</span></td>
-        <td>01/03/2022</td>
-        <td>1ª Turma</td>
-        <td>Comando</td>
-        <td>01/03/2022</td>
-        <td>-</td>
-        <td>0/3</td>
-      </tr>
+  <h1 class="text-2xl font-black mb-4">📋 Hierarquia do Batalhão</h1>
 
-      <tr>
-        <td>1042022255</td>
-        <td>Davi Costa</td>
-        <td>Rivotril</td>
-        <td>
-          <select>
-            <option>MAJ PM</option>
-            <option>CAP PM</option>
-            <option>1º TEN PM</option>
-          </select>
-        </td>
-        <td>SUBCOMANDANTE AGUIAR / SUPERVISOR SINDICÂNCIAS / SUPERVISOR CCOMSOC</td>
-        <td>AGUIAR-2025</td>
-        <td>
-          <select>
-            <option>ATIVO</option>
-            <option>Afastado</option>
-            <option>Férias</option>
-            <option>Afastamento Médico</option>
-            <option>Punição</option>
-            <option>Reserva</option>
-          </select>
-        </td>
-        <td><span class="status vermelho">✖ FALSO</span></td>
-        <td>01/04/2022</td>
-        <td>1ª Turma</td>
-        <td>Comando</td>
-        <td>01/04/2022</td>
-        <td>-</td>
-        <td>0/3</td>
-      </tr>
+  <div class="overflow-x-auto">
+    <table>
+      <thead>
+        <tr>
+          <th>Matrícula</th>
+          <th>Nome</th>
+          <th>Nome de Guerra</th>
+          <th>Patente</th>
+          <th>Função</th>
+          <th>Edital</th>
+          <th>Situação</th>
+          <th>Licença Premium</th>
+          <th>Última Promoção</th>
+          <th>Turma</th>
+          <th>CIA</th>
+          <th>Data de Entrada</th>
+          <th>Padrinhos</th>
+          <th>PAD</th>
+        </tr>
+      </thead>
 
-      <tr class="grad-section"><td colspan="14">OFICIAIS INTERMEDIÁRIOS</td></tr>
-      <tr>
-        <td>1072023259</td>
-        <td>Saléh Matias</td>
-        <td>Tranca Rua</td>
-        <td>
-          <select>
-            <option>CAP PM</option>
-            <option>MAJ PM</option>
-            <option>1º TEN PM</option>
-          </select>
-        </td>
-        <td>COMANDANTE 1ª CIA / COMANDO DECIC / COMANDANTE P1 / COMANDANTE P4</td>
-        <td>AGUIAR-2025</td>
-        <td>
-          <select>
-            <option>ATIVO</option>
-            <option>Afastado</option>
-            <option>Férias</option>
-            <option>Afastamento Médico</option>
-            <option>Punição</option>
-            <option>Reserva</option>
-          </select>
-        </td>
-        <td><span class="status verde">✔ VERDADEIRO</span></td>
-        <td>01/07/2023</td>
-        <td>2ª Turma</td>
-        <td>1ª CIA</td>
-        <td>01/07/2023</td>
-        <td>-</td>
-        <td>0/3</td>
-      </tr>
+      <tbody id="tabela">
+        <tr class="grad-section"><td colspan="14">COMANDO AGUIAR</td></tr>
 
-      <tr>
-        <td>1012022274</td>
-        <td>João Farias</td>
-        <td>Carritel</td>
-        <td>
-          <select>
-            <option>CAP PM</option>
-            <option>MAJ PM</option>
-          </select>
-        </td>
-        <td>COMANDANTE 2ª CIA / SUPERVISOR CERIMONIAL / SUPERVISOR DSLP</td>
-        <td>AGUIAR-2025</td>
-        <td>
-          <select>
-            <option>ATIVO</option>
-            <option>Afastado</option>
-            <option>Férias</option>
-            <option>Afastamento Médico</option>
-            <option>Punição</option>
-            <option>Reserva</option>
-          </select>
-        </td>
-        <td><span class="status vermelho">✖ FALSO</span></td>
-        <td>01/02/2023</td>
-        <td>2ª Turma</td>
-        <td>2ª CIA</td>
-        <td>01/02/2023</td>
-        <td>-</td>
-        <td>0/3</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+        <tr>
+          <td>2410202230</td>
+          <td>Matheus Bezerra</td>
+          <td>Bezerra</td>
+          <td>
+            <select>
+              <option>TEN.CEL PM</option>
+              <option>MAJ PM</option>
+              <option>CAP PM</option>
+              <option>1º TEN PM</option>
+              <option>SUBTEN PM</option>
+            </select>
+          </td>
+          <td>COMANDANTE AGUIAR / COMANDANTE SINDICÂNCIA / COMANDANTE CCOMSOC</td>
+          <td>AGUIAR-2025</td>
+          <td>
+            <select>
+              <option>ATIVO</option>
+              <option>Afastado</option>
+              <option>Férias</option>
+              <option>Afastamento Médico</option>
+              <option>Punição</option>
+              <option>Reserva</option>
+            </select>
+          </td>
+          <td><span class="status verde">✔ VERDADEIRO</span></td>
+          <td>01/03/2022</td>
+          <td>1ª Turma</td>
+          <td>Comando</td>
+          <td>01/03/2022</td>
+          <td>-</td>
+          <td>0/3</td>
+        </tr>
+
+        <tr>
+          <td>1042022255</td>
+          <td>Davi Costa</td>
+          <td>Rivotril</td>
+          <td>
+            <select>
+              <option>MAJ PM</option>
+              <option>CAP PM</option>
+              <option>1º TEN PM</option>
+            </select>
+          </td>
+          <td>SUBCOMANDANTE AGUIAR / SUPERVISOR SINDICÂNCIAS / SUPERVISOR CCOMSOC</td>
+          <td>AGUIAR-2025</td>
+          <td>
+            <select>
+              <option>ATIVO</option>
+              <option>Afastado</option>
+              <option>Férias</option>
+              <option>Afastamento Médico</option>
+              <option>Punição</option>
+              <option>Reserva</option>
+            </select>
+          </td>
+          <td><span class="status vermelho">✖ FALSO</span></td>
+          <td>01/04/2022</td>
+          <td>1ª Turma</td>
+          <td>Comando</td>
+          <td>01/04/2022</td>
+          <td>-</td>
+          <td>0/3</td>
+        </tr>
+
+        <tr class="grad-section"><td colspan="14">OFICIAIS INTERMEDIÁRIOS</td></tr>
+
+        <tr>
+          <td>1072023259</td>
+          <td>Saléh Matias</td>
+          <td>Tranca Rua</td>
+          <td>
+            <select>
+              <option>CAP PM</option>
+              <option>MAJ PM</option>
+              <option>1º TEN PM</option>
+            </select>
+          </td>
+          <td>COMANDANTE 1ª CIA / COMANDO DECIC / COMANDANTE P1 / COMANDANTE P4</td>
+          <td>AGUIAR-2025</td>
+          <td>
+            <select>
+              <option>ATIVO</option>
+              <option>Afastado</option>
+              <option>Férias</option>
+              <option>Afastamento Médico</option>
+              <option>Punição</option>
+              <option>Reserva</option>
+            </select>
+          </td>
+          <td><span class="status verde">✔ VERDADEIRO</span></td>
+          <td>01/07/2023</td>
+          <td>2ª Turma</td>
+          <td>1ª CIA</td>
+          <td>01/07/2023</td>
+          <td>-</td>
+          <td>0/3</td>
+        </tr>
+
+        <tr>
+          <td>1012022274</td>
+          <td>João Farias</td>
+          <td>Carritel</td>
+          <td>
+            <select>
+              <option>CAP PM</option>
+              <option>MAJ PM</option>
+            </select>
+          </td>
+          <td>COMANDANTE 2ª CIA / SUPERVISOR CERIMONIAL / SUPERVISOR DSLP</td>
+          <td>AGUIAR-2025</td>
+          <td>
+            <select>
+              <option>ATIVO</option>
+              <option>Afastado</option>
+              <option>Férias</option>
+              <option>Afastamento Médico</option>
+              <option>Punição</option>
+              <option>Reserva</option>
+            </select>
+          </td>
+          <td><span class="status vermelho">✖ FALSO</span></td>
+          <td>01/02/2023</td>
+          <td>2ª Turma</td>
+          <td>2ª CIA</td>
+          <td>01/02/2023</td>
+          <td>-</td>
+          <td>0/3</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </body>
 </html>
