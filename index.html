@@ -1,255 +1,320 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hierarquia ROTA</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Planilha de Hierarquia — RP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class',theme:{extend:{}}}</script>
+<style>
+  html,body{height:100%} body{background:#020617}
+  .grid-wrap{overflow:auto; max-height:calc(100vh - 210px);}
+  .sheet{display:grid; grid-auto-rows:minmax(44px,auto); position:relative;}
+  .cell{border-top:1px solid rgba(255,255,255,.06); padding:.55rem .75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .cell[contenteditable="true"]:focus{outline:2px solid rgba(245,158,11,.5); border-radius:.5rem; background:rgba(255,255,255,.04)}
+  .row:hover .cell{background:rgba(255,255,255,.02);}
+  .head{position:sticky; top:0; z-index:5; background:rgba(2,6,23,.93); backdrop-filter:blur(6px); border-bottom:1px solid rgba(255,255,255,.08); font-weight:600;}
+  .wrap{white-space:normal; word-break:break-word}
+  .section{grid-column:1 / -1; font-weight:700; text-transform:uppercase; color:rgb(253,230,138);
+           background:rgba(120,53,15,.15); border-top:1px solid rgba(253,230,138,.25); padding:.5rem .75rem}
 
-  <style>
-    body {
-      background-color: #0a0f1c;
-      color: #e5e7eb;
-      font-family: 'Inter', sans-serif;
-      padding: 20px;
-    }
+  /* chips flag */
+  .flag{display:inline-flex; align-items:center; gap:.5rem; padding:.15rem .55rem; border-radius:999px; font-size:.75rem; font-weight:700; letter-spacing:.2px;}
+  .flag.true{background:rgba(34,197,94,.15); color:rgb(134,239,172); border:1px solid rgba(34,197,94,.3)}
+  .flag.false{background:rgba(239,68,68,.15); color:rgb(252,165,165); border:1px solid rgba(239,68,68,.3)}
+  .flag .dot{width:.5rem; height:.5rem; border-radius:999px;}
+  .flag.true .dot{background:rgb(34,197,94)}
+  .flag.false .dot{background:rgb(239,68,68)}
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #0d1322;
-      border-radius: 10px;
-      overflow: hidden;
-      min-width: 1000px;
-    }
-
-    thead th {
-      background-color: #11182b;
-      text-align: left;
-      padding: 10px;
-      border-bottom: 2px solid #1f2937;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    tbody td {
-      padding: 8px 12px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    /* ======== CORREÇÃO DE CONTRASTE PARA SELECT ======== */
-    select {
-      background-color: #0d1322 !important;  /* fundo escuro */
-      color: #e5e7eb !important;             /* texto claro */
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 6px;
-      padding: 4px 6px;
-      font-weight: 500;
-      cursor: pointer;
-      appearance: none;
-    }
-
-    select option {
-      background-color: #0d1322 !important;  /* fundo das opções */
-      color: #e5e7eb !important;
-    }
-
-    select:focus {
-      outline: 2px solid #facc15;  /* borda amarela ao focar */
-      outline-offset: 1px;
-    }
-
-    :root, select, select option { color-scheme: dark; }
-
-    /* Status (bolinhas coloridas) */
-    .status {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-    .status.verde {
-      background: rgba(34,197,94,0.15);
-      color: #22c55e;
-    }
-    .status.vermelho {
-      background: rgba(239,68,68,0.15);
-      color: #ef4444;
-    }
-
-    /* Cabeçalho de graduação */
-    .grad-section {
-      background: #1a2034;
-      color: #facc15;
-      font-weight: 700;
-      text-transform: uppercase;
-      padding: 6px 12px;
-    }
-  </style>
+  /* ======== CORREÇÃO DE CONTRASTE PARA SELECT (mantendo design) ======== */
+  select {
+    background-color: #0d1322 !important;  /* fundo escuro igual ao painel */
+    color: #e5e7eb !important;             /* texto claro */
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-weight: 500;
+    cursor: pointer;
+    appearance: none;
+  }
+  select option {
+    background-color: #0d1322 !important;  /* fundo das opções */
+    color: #e5e7eb !important;
+  }
+  select:focus {
+    outline: 2px solid #facc15;            /* destaque no foco */
+    outline-offset: 1px;
+  }
+  :root, select, select option { color-scheme: dark; } /* força menu escuro */
+</style>
 </head>
+<body class="dark text-slate-100">
+<div class="max-w-7xl mx-auto px-4 py-6">
+  <header class="mb-4 flex items-center gap-3">
+    <div class="h-10 w-10 rounded-lg grid place-items-center font-black border border-amber-500/40 bg-slate-900/60">R</div>
+    <div>
+      <h1 class="text-xl font-bold">Planilha de Hierarquia — RP</h1>
+      <p class="text-sm text-slate-400">Edição direta, agrupamento por Graduação e chips para Licença Premium</p>
+    </div>
+    <div class="ml-auto toolbar flex flex-wrap items-center gap-2">
+      <button id="addRow" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">+ Linha</button>
+      <button id="addSection" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">+ Seção personalizada</button>
+      <button id="delLast" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">– Remover última</button>
+      <button id="saveJson" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">Baixar JSON</button>
+      <label class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs cursor-pointer">Carregar JSON
+        <input id="loadJson" type="file" accept="application/json" class="hidden">
+      </label>
+      <label class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs cursor-pointer">Importar CSV
+        <input id="loadCsv" type="file" accept=".csv,text/csv" class="hidden">
+      </label>
+      <button id="saveCsv" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">Baixar CSV</button>
+    </div>
+  </header>
 
-<body>
-  <h1 class="text-2xl font-black mb-4">📋 Hierarquia do Batalhão</h1>
+  <section class="mb-3 grid md:grid-cols-3 gap-3">
+    <div class="md:col-span-2">
+      <label class="text-sm text-slate-400">Buscar</label>
+      <input id="q" class="w-full mt-1 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60" placeholder="nome, matrícula, patente, função..." />
+    </div>
+    <div>
+      <label class="text-sm text-slate-400">Densidade</label>
+      <select id="density" class="w-full mt-1 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60">
+        <option value="36">Compacta</option>
+        <option value="44" selected>Normal</option>
+        <option value="56">Conforto</option>
+      </select>
+    </div>
+  </section>
 
-  <div class="overflow-x-auto">
-    <table>
-      <thead>
-        <tr>
-          <th>Matrícula</th>
-          <th>Nome</th>
-          <th>Nome de Guerra</th>
-          <th>Patente</th>
-          <th>Função</th>
-          <th>Edital</th>
-          <th>Situação</th>
-          <th>Licença Premium</th>
-          <th>Última Promoção</th>
-          <th>Turma</th>
-          <th>CIA</th>
-          <th>Data de Entrada</th>
-          <th>Padrinhos</th>
-          <th>PAD</th>
-        </tr>
-      </thead>
+  <div id="status" class="mb-3 text-sm text-slate-400">Pronto.</div>
 
-      <tbody id="tabela">
-        <tr class="grad-section"><td colspan="14">COMANDO AGUIAR</td></tr>
-
-        <tr>
-          <td>2410202230</td>
-          <td>Matheus Bezerra</td>
-          <td>Bezerra</td>
-          <td>
-            <select>
-              <option>TEN.CEL PM</option>
-              <option>MAJ PM</option>
-              <option>CAP PM</option>
-              <option>1º TEN PM</option>
-              <option>SUBTEN PM</option>
-            </select>
-          </td>
-          <td>COMANDANTE AGUIAR / COMANDANTE SINDICÂNCIA / COMANDANTE CCOMSOC</td>
-          <td>AGUIAR-2025</td>
-          <td>
-            <select>
-              <option>ATIVO</option>
-              <option>Afastado</option>
-              <option>Férias</option>
-              <option>Afastamento Médico</option>
-              <option>Punição</option>
-              <option>Reserva</option>
-            </select>
-          </td>
-          <td><span class="status verde">✔ VERDADEIRO</span></td>
-          <td>01/03/2022</td>
-          <td>1ª Turma</td>
-          <td>Comando</td>
-          <td>01/03/2022</td>
-          <td>-</td>
-          <td>0/3</td>
-        </tr>
-
-        <tr>
-          <td>1042022255</td>
-          <td>Davi Costa</td>
-          <td>Rivotril</td>
-          <td>
-            <select>
-              <option>MAJ PM</option>
-              <option>CAP PM</option>
-              <option>1º TEN PM</option>
-            </select>
-          </td>
-          <td>SUBCOMANDANTE AGUIAR / SUPERVISOR SINDICÂNCIAS / SUPERVISOR CCOMSOC</td>
-          <td>AGUIAR-2025</td>
-          <td>
-            <select>
-              <option>ATIVO</option>
-              <option>Afastado</option>
-              <option>Férias</option>
-              <option>Afastamento Médico</option>
-              <option>Punição</option>
-              <option>Reserva</option>
-            </select>
-          </td>
-          <td><span class="status vermelho">✖ FALSO</span></td>
-          <td>01/04/2022</td>
-          <td>1ª Turma</td>
-          <td>Comando</td>
-          <td>01/04/2022</td>
-          <td>-</td>
-          <td>0/3</td>
-        </tr>
-
-        <tr class="grad-section"><td colspan="14">OFICIAIS INTERMEDIÁRIOS</td></tr>
-
-        <tr>
-          <td>1072023259</td>
-          <td>Saléh Matias</td>
-          <td>Tranca Rua</td>
-          <td>
-            <select>
-              <option>CAP PM</option>
-              <option>MAJ PM</option>
-              <option>1º TEN PM</option>
-            </select>
-          </td>
-          <td>COMANDANTE 1ª CIA / COMANDO DECIC / COMANDANTE P1 / COMANDANTE P4</td>
-          <td>AGUIAR-2025</td>
-          <td>
-            <select>
-              <option>ATIVO</option>
-              <option>Afastado</option>
-              <option>Férias</option>
-              <option>Afastamento Médico</option>
-              <option>Punição</option>
-              <option>Reserva</option>
-            </select>
-          </td>
-          <td><span class="status verde">✔ VERDADEIRO</span></td>
-          <td>01/07/2023</td>
-          <td>2ª Turma</td>
-          <td>1ª CIA</td>
-          <td>01/07/2023</td>
-          <td>-</td>
-          <td>0/3</td>
-        </tr>
-
-        <tr>
-          <td>1012022274</td>
-          <td>João Farias</td>
-          <td>Carritel</td>
-          <td>
-            <select>
-              <option>CAP PM</option>
-              <option>MAJ PM</option>
-            </select>
-          </td>
-          <td>COMANDANTE 2ª CIA / SUPERVISOR CERIMONIAL / SUPERVISOR DSLP</td>
-          <td>AGUIAR-2025</td>
-          <td>
-            <select>
-              <option>ATIVO</option>
-              <option>Afastado</option>
-              <option>Férias</option>
-              <option>Afastamento Médico</option>
-              <option>Punição</option>
-              <option>Reserva</option>
-            </select>
-          </td>
-          <td><span class="status vermelho">✖ FALSO</span></td>
-          <td>01/02/2023</td>
-          <td>2ª Turma</td>
-          <td>2ª CIA</td>
-          <td>01/02/2023</td>
-          <td>-</td>
-          <td>0/3</td>
-        </tr>
-      </tbody>
-    </table>
+  <div id="gridWrap" class="grid-wrap rounded-2xl border border-white/10 bg-slate-900/40 shadow-xl">
+    <div id="sheet" class="sheet"></div>
   </div>
+</div>
+
+<script>
+/* =============== COLUNAS (ordem exata) =============== */
+const COLUMNS = [
+  { key:"matricula",       label:"Matrícula",             width:"10rem", type:"text" },
+  { key:"nome",            label:"Nome",                  width:"14rem", type:"text" },
+  { key:"guerra",          label:"Nome de Guerra",        width:"12rem", type:"text" },
+  { key:"patente",         label:"Patente",               width:"11rem", type:"select", options:[
+      "CEL PM","TEN.CEL PM","MAJ PM","CAP PM","1º TEN PM","2º TEN PM","ASP OF PM",
+      "SUBTEN PM","1º SGT PM","2º SGT PM","3º SGT PM","CB PM","SD PM","ALUNO"
+    ]},
+  { key:"funcao",          label:"Função",                width:"32rem", type:"text", wrap:true }, /* texto longo */
+
+  { key:"edital",          label:"Edital",                width:"10rem", type:"text" },
+  { key:"situacao",        label:"Situação",              width:"11rem", type:"select", options:["ATIVO","AFastado","Férias","Afastamento Médico","Punição","Reserva"] },
+  { key:"licenca_premium", label:"Licença Premium",       width:"12rem", type:"flag", trueLabel:"ATIVA", falseLabel:"INATIVA" },
+  { key:"ultima_promocao", label:"Última Promoção",       width:"12rem", type:"date" },
+  { key:"turma",           label:"Turma",                 width:"9rem",  type:"text" },
+  { key:"cia",             label:"CIA",                   width:"9rem",  type:"text" },
+  { key:"data_entrada",    label:"Data de Entrada",       width:"12rem", type:"date" },
+  { key:"padrinhos",       label:"Padrinhos",             width:"16rem", type:"text", wrap:true },
+  { key:"pad",             label:"PAD",                   width:"8rem",  type:"text" },
+];
+
+/* ======== GRADUAÇÃO por Patente (agrupamento automático) ======== */
+const GRAD_ORDER = [
+  { label:"Oficiais Superiores",  match: p => /(^CEL\b|TEN\.?CEL|MAJ)/i.test(p) },
+  { label:"Oficiais Intermediários", match: p => /\bCAP\b/i.test(p) },
+  { label:"Oficiais Subalternos", match: p => /(1º\s*TEN|2º\s*TEN|ASP)/i.test(p) },
+  { label:"Praças Graduados",     match: p => /(SUBTEN|SGT|CB|SD)/i.test(p) },
+  { label:"Outros",               match: p => true },
+];
+function patenteToGraduacao(patente="") {
+  const p = String(patente).toUpperCase();
+  const g = GRAD_ORDER.find(g => g.match(p)) || GRAD_ORDER[GRAD_ORDER.length-1];
+  return g.label;
+}
+
+/* =============== EXEMPLO INICIAL (pode apagar) =============== */
+const INITIAL_ROWS = [
+  { matricula:"2410202230", nome:"Matheus Bezerra", guerra:"Bezerra", patente:"TEN.CEL PM",
+    funcao:"COMANDANTE AGUIAR / COMANDANTE SINDICÂNCIA / COMANDANTE CCOMSOC",
+    edital:"", situacao:"ATIVO", licenca_premium:true, ultima_promocao:"2024-08-01",
+    turma:"", cia:"", data_entrada:"2022-03-01", padrinhos:"-", pad:"0/3" },
+
+  { matricula:"1042022255", nome:"Davi Costa", guerra:"Rivotril", patente:"MAJ PM",
+    funcao:"SUBCOMANDANTE AGUIAR / SUPERVISOR SINDICÂNCIAS / SUPERVISOR CCOMSOC",
+    edital:"", situacao:"ATIVO", licenca_premium:false, ultima_promocao:"2024-06-10",
+    turma:"", cia:"", data_entrada:"2022-04-01", padrinhos:"-", pad:"0/3" },
+
+  { matricula:"1072023259", nome:"Saléh Matias", guerra:"Tranca Rua", patente:"CAP PM",
+    funcao:"COMANDANTE 1ª CIA / COMANDO DECIC / COMANDANTE P1 / COMANDANTE P4",
+    edital:"", situacao:"ATIVO", licenca_premium:true, ultima_promocao:"2025-01-12",
+    turma:"", cia:"CMT. 1ª CIA", data_entrada:"2023-07-01", padrinhos:"-", pad:"0/3" },
+];
+
+/* ===================== ESTADO ===================== */
+let ROWS = loadFromLocal() || INITIAL_ROWS.slice();
+const state = { q:"" };
+
+/* ===================== RENDER ===================== */
+const sheetEl = document.getElementById('sheet');
+
+function computeCols(){ sheetEl.style.gridTemplateColumns = COLUMNS.map(c=>c.width||"12rem").join(' '); }
+function renderHeader(){
+  const frag=document.createDocumentFragment();
+  COLUMNS.forEach(col=>{
+    const h=document.createElement('div');
+    h.className="cell head";
+    h.textContent=col.label;
+    frag.appendChild(h);
+  });
+  sheetEl.appendChild(frag);
+}
+
+function flagChip(value, col){
+  const on=!!value;
+  const div=document.createElement('div');
+  div.className=`flag ${on?'true':'false'}`;
+  div.innerHTML=`<span class="dot"></span>${on?(col.trueLabel||'SIM'):(col.falseLabel||'NÃO')}`;
+  return div;
+}
+
+function renderDataRow(row, idx){
+  COLUMNS.forEach(col=>{
+    const cell=document.createElement('div');
+    cell.className="cell row";
+    const val=row[col.key]??"";
+    if(col.type==="flag"){
+      const chip=flagChip(val,col);
+      chip.style.cursor="pointer";
+      chip.addEventListener('click',()=>{ row[col.key]=!row[col.key]; persist(); refresh(); });
+      cell.appendChild(chip);
+    } else if(col.type==="select"){
+      const select=document.createElement('select');
+      select.className="bg-transparent border border-white/10 rounded-md px-2 py-1 text-sm w-full";
+      (col.options||[]).forEach(opt=>{
+        const o=document.createElement('option'); o.textContent=opt; o.value=opt; if(opt===val) o.selected=true; select.appendChild(o);
+      });
+      select.addEventListener('change',e=>{ row[col.key]=e.target.value; persist(); });
+      cell.appendChild(select);
+    } else if(col.type==="date"){
+      const input=document.createElement('input'); input.type="date";
+      input.className="bg-transparent border border-white/10 rounded-md px-2 py-1 text-sm w-full";
+      if(val) input.value=String(val).slice(0,10);
+      input.addEventListener('change',e=>{ row[col.key]=e.target.value; persist(); });
+      cell.appendChild(input);
+    } else {
+      const editable=document.createElement('div');
+      editable.contentEditable="true";
+      editable.className="w-full" + (col.wrap?' wrap':'');
+      editable.textContent=val;
+      editable.addEventListener('blur',()=>{ row[col.key]=editable.textContent.trim(); persist(); });
+      cell.appendChild(editable);
+    }
+    sheetEl.appendChild(cell);
+  });
+}
+
+function renderBody(){
+  sheetEl.innerHTML=""; renderHeader();
+
+  // filtra por busca
+  const q=normalize(state.q);
+  let rows=ROWS.filter(r=>{
+    if (!q) return true;
+    return COLUMNS.some(col=>normalize(r[col.key]).includes(q));
+  });
+
+  // ordena por graduação (com base na patente) e depois por patente/nome
+  rows.sort((a,b)=>{
+    const ga = GRAD_ORDER.findIndex(g => g.label===patenteToGraduacao(a.patente));
+    const gb = GRAD_ORDER.findIndex(g => g.label===patenteToGraduacao(b.patente));
+    if (ga!==gb) return ga-gb;
+    const pa = normalize(a.patente), pb = normalize(b.patente);
+    if (pa!==pb) return pa<pb?-1:1;
+    const na = normalize(a.nome), nb = normalize(b.nome);
+    return na<nb?-1:na>nb?1:0;
+  });
+
+  // insere seções automáticas quando muda a graduação
+  let currentGrad = null;
+  rows.forEach((row, i) => {
+    const grad = patenteToGraduacao(row.patente);
+    if (grad !== currentGrad) {
+      currentGrad = grad;
+      const s=document.createElement('div');
+      s.className="section"; s.textContent=grad;
+      sheetEl.appendChild(s);
+    }
+    renderDataRow(row, i);
+  });
+}
+
+function refresh(){ computeCols(); renderBody(); }
+computeCols(); renderBody();
+
+/* ===================== UI ===================== */
+document.getElementById('q').addEventListener('input',e=>{ state.q=e.target.value; renderBody(); });
+document.getElementById('density').addEventListener('change',e=>{
+  const h=parseInt(e.target.value,10);
+  document.querySelectorAll('.cell').forEach(el=>el.style.minHeight=h+'px');
+});
+
+/* ===================== CONTROLES ===================== */
+document.getElementById('addRow').addEventListener('click',()=>{
+  ROWS.push(Object.fromEntries(COLUMNS.map(c=>[c.key,""])));
+  persist(); refresh();
+});
+document.getElementById('addSection').addEventListener('click',()=>{
+  const title=prompt("Título da seção personalizada:","COMANDO AGUIAR");
+  if(title){ ROWS.push({custom_section:title}); persist(); refresh(); }
+});
+document.getElementById('delLast').addEventListener('click',()=>{ ROWS.pop(); persist(); refresh(); });
+
+document.getElementById('saveJson').addEventListener('click',()=>{
+  const blob=new Blob([JSON.stringify(ROWS,null,2)],{type:'application/json;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='hierarquia.json'; a.click(); URL.revokeObjectURL(a.href);
+});
+document.getElementById('loadJson').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader(); r.onload=()=>{ try{ ROWS=JSON.parse(r.result); persist(); refresh(); }catch{ alert('JSON inválido'); } };
+  r.readAsText(f);
+});
+
+/* ===== Import/Export CSV ===== */
+function parseCSV(txt){const rows=[];let i=0,f='',row=[],q=false;while(i<txt.length){const c=txt[i];if(q){if(c=='"'){if(txt[i+1]=='"'){f+='"';i++;}else q=false;}else f+=c;}else{if(c=='"')q=true;else if(c==','){row.push(f);f='';}else if(c=='\n'||c=='\r'){if(f.length||row.length){row.push(f);rows.push(row);row=[];f='';}if(c=='\r'&&txt[i+1]=='\n')i++;}else f+=c;}i++;}if(f.length||row.length){row.push(f);rows.push(row);}return rows;}
+document.getElementById('loadCsv').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader(); r.onload=()=>{
+    const data=parseCSV(r.result); const [hdr,...lines]=data;
+    const map=hdr.map(h=>{const n=normalize(h); return COLUMNS.find(c=>normalize(c.label)===n||normalize(c.key)===n)?.key||null;});
+    const rows=[];
+    lines.forEach(cells=>{
+      if(cells.every(c=>!String(c||"").trim())) return;
+      const obj={}; map.forEach((k,i)=>{ if(!k) return; const col=COLUMNS.find(c=>c.key===k); let v=cells[i];
+        if(col?.type==='flag'){const nv=normalize(v); obj[k]=(nv==='true'||nv==='verdadeiro'||nv==='sim'||nv==='ativa'||nv==='ok');}
+        else if(col?.type==='date'){const d=new Date(v); obj[k]=isFinite(d)?d.toISOString().slice(0,10):"";}
+        else {obj[k]=v;}
+      }); rows.push(obj);
+    });
+    ROWS=rows; persist(); refresh();
+  }; r.readAsText(f);
+});
+document.getElementById('saveCsv').addEventListener('click',()=>{
+  const rows=[]; rows.push(COLUMNS.map(c=>c.label));
+  ROWS.forEach(r=>{
+    const arr=COLUMNS.map(col=>{
+      let v=r[col.key]??"";
+      if(col.type==='flag') v=(v?(col.trueLabel||'SIM'):(col.falseLabel||'NÃO'));
+      return v;
+    });
+    rows.push(arr);
+  });
+  const esc=s=>/[",\n]/.test(String(s))?`"${String(s).replace(/"/g,'""')}"`:String(s);
+  const csv=rows.map(r=>r.map(esc).join(",")).join("\n");
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"})); a.download="hierarquia.csv"; a.click(); URL.revokeObjectURL(a.href);
+});
+
+/* ===================== UTILS ===================== */
+function normalize(s){return String(s||"").normalize("NFD").replace(/\p{Diacritic}/gu,'').toLowerCase();}
+function persist(){ localStorage.setItem('rp.hierarquia.rows', JSON.stringify(ROWS)); }
+function loadFromLocal(){ try{ return JSON.parse(localStorage.getItem('rp.hierarquia.rows')||'null'); }catch{return null;} }
+</script>
 </body>
 </html>
