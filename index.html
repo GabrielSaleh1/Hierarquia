@@ -3,13 +3,27 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Hierarquia do Batalhão — Beta</title>
+  <title>Hierarquia do Batalhão — Bonita 😎</title>
+  <meta name="description" content="Hierarquia do batalhão (GTA RP) com visual aprimorado e melhor usabilidade" />
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config={darkMode:'class',theme:{extend:{}}}</script>
   <style>
     html,body{height:100%} body{background:#020617}
+    /* scrollbars suaves */
+    .scroll-smooth::-webkit-scrollbar{height:10px;width:10px}
+    .scroll-smooth::-webkit-scrollbar-thumb{background:#1f2937;border-radius:8px}
+    .scroll-smooth::-webkit-scrollbar-track{background:#0b1220}
+
+    /* tabela */
     th button{display:inline-flex;align-items:center;gap:.35rem}
-    .table-wrap{overflow:auto;max-height:calc(100vh - 220px)} .cell{white-space:nowrap}
+    .table-wrap{overflow:auto;max-height:calc(100vh - 230px)}
+    .row{border-top:1px solid rgba(255,255,255,.05)}
+    .sticky-col-0{position:sticky;left:0;z-index:2;background:rgba(2,6,23,.9);backdrop-filter:saturate(120%) blur(2px)}
+    .sticky-col-1{position:sticky;left:12rem;z-index:2;background:rgba(2,6,23,.9);backdrop-filter:saturate(120%) blur(2px)} /* 192px = w-48 */
+    .head-sticky{position:sticky;top:0;z-index:5;background:rgba(2,6,23,.85);backdrop-filter:blur(6px)}
+    .truncate-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .wrap-cell{white-space:normal;word-break:break-word}
   </style>
 </head>
 <body class="dark text-slate-100">
@@ -17,75 +31,81 @@
     <header class="mb-4 flex items-center gap-3">
       <div class="h-10 w-10 rounded-lg grid place-items-center font-black border border-amber-500/40 bg-slate-900/60">R</div>
       <div>
-        <h1 class="text-xl font-bold">Hierarquia do Batalhão — Beta</h1>
-        <p class="text-sm text-slate-400">Lendo Google Sheets publicado (CSV)</p>
+        <h1 class="text-xl font-bold">Hierarquia do Batalhão</h1>
+        <p class="text-sm text-slate-400">Visual moderno + busca, ordenação, colunas fixas e exportar CSV</p>
       </div>
-      <div class="ml-auto flex items-center gap-2">
-        <button id="btnReload" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-sm">Recarregar</button>
-        <button id="btnExport" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-sm">Exportar CSV (filtrado)</button>
+      <div class="ml-auto flex flex-wrap items-center gap-2">
+        <label class="flex items-center gap-2 text-xs text-slate-300 border border-white/10 rounded-lg px-2 py-1">
+          <input id="toggleWrap" type="checkbox" class="accent-amber-500"> Quebrar texto
+        </label>
+        <label class="flex items-center gap-2 text-xs text-slate-300 border border-white/10 rounded-lg px-2 py-1">
+          <input id="toggleDense" type="checkbox" class="accent-amber-500"> Densidade compacta
+        </label>
+        <button id="btnReload" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">Recarregar</button>
+        <button id="btnExport" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">Exportar CSV (visível)</button>
       </div>
     </header>
 
     <section class="mb-3 grid md:grid-cols-3 gap-3">
       <div class="md:col-span-2">
         <label class="text-sm text-slate-400">Buscar (qualquer coluna)</label>
-        <input id="q" class="w-full mt-1 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60" placeholder="nome, matrícula, patente, seção..." />
+        <input id="q" class="w-full mt-1 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60" placeholder="nome, matrícula, patente, função..." />
       </div>
-      <div>
+      <div class="">
         <label class="text-sm text-slate-400">Linhas por página</label>
         <select id="pageSize" class="w-full mt-1 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60">
-          <option>10</option><option selected>25</option><option>50</option><option>100</option><option>200</option>
+          <option>10</option><option selected>25</option><option>50</option><option>100</option>
         </select>
       </div>
     </section>
 
     <div id="status" class="mb-3 text-sm text-slate-400">Pronto.</div>
 
-    <div class="rounded-xl border border-white/10 bg-slate-900/40">
-      <div class="table-wrap" id="tableWrap">
-        <table class="w-full text-sm" id="tbl">
-          <thead id="thead" class="sticky top-0 bg-slate-900/80 backdrop-blur"></thead>
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 shadow-xl">
+      <div id="tableWrap" class="table-wrap scroll-smooth rounded-2xl">
+        <table id="tbl" class="w-full text-sm">
+          <thead id="thead" class="head-sticky"></thead>
           <tbody id="tbody"></tbody>
         </table>
       </div>
       <div class="p-3 flex items-center gap-2 border-t border-white/10">
         <button id="prev" class="px-3 py-1 rounded border border-white/10 hover:bg-white/5 text-xs">Anterior</button>
         <button id="next" class="px-3 py-1 rounded border border-white/10 hover:bg-white/5 text-xs">Próxima</button>
-        <div class="text-xs text-slate-400 ml-2" id="pagerInfo">—</div>
-        <div class="ml-auto text-xs text-slate-500">v0.3</div>
+        <div id="pagerInfo" class="text-xs text-slate-400 ml-2">—</div>
+        <div class="ml-auto text-xs text-slate-500">v1.0</div>
       </div>
     </div>
   </div>
 
   <script>
-    // ========= CONFIG: ID publicado que você enviou =========
+    // ====== CONFIG: ID publicado que você enviou ======
     const PUBLISHED_ID = "2PACX-1vRCM3OwpuZurnm37gwAzp9asi9M5eou2h2AFeHea6uLTDxJjElnxafcUaPodoGpchvKGBy9h8fg2b-M";
-    const GID = "0"; // troque se quiser outra aba (veja o gid no URL da planilha)
-    const SHEET_NAME = ""; // opcional: se quiser forçar por nome da aba (ex: "Hierarquia")
+    const GID = "0"; // ajuste para outra aba se quiser
 
-    // Preferências de URL (tenta em ordem)
     const csvURLs = [
       () => `https://docs.google.com/spreadsheets/d/e/${PUBLISHED_ID}/pub?gid=${GID}&single=true&output=csv`,
       () => `https://docs.google.com/spreadsheets/d/e/${PUBLISHED_ID}/pub?output=csv`,
-      () => SHEET_NAME ? `https://docs.google.com/spreadsheets/d/e/${PUBLISHED_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}` : null,
-    ].filter(Boolean);
+      () => `https://docs.google.com/spreadsheets/d/e/${PUBLISHED_ID}/gviz/tq?tqx=out:csv&gid=${GID}`,
+    ];
 
-    // ====== CSV parser simples ======
+    // ====== parser CSV ======
     function parseCSV(text){
       const rows=[];let i=0,field='',row=[],inQ=false;
       while(i<text.length){const c=text[i];
-        if(inQ){if(c=='"'){if(text[i+1]=='"'){field+='"';i++;}else inQ=false;} else field+=c;}
-        else{if(c=='"') inQ=true; else if(c==','){row.push(field);field='';}
-        else if(c=='\n'||c=='\r'){ if(field.length||row.length){row.push(field);rows.push(row);row=[];field='';}
-          if(c=='\r'&&text[i+1]=='\n') i++; } else field+=c;}
+        if(inQ){ if(c=='"'){ if(text[i+1]=='"'){field+='"';i++;} else inQ=false; } else field+=c; }
+        else{ if(c=='"') inQ=true; else if(c==','){row.push(field);field='';}
+        else if(c=='\n'||c=='\r'){ if(field.length||row.length){row.push(field);rows.push(row);row=[];field='';} if(c=='\r'&&text[i+1]=='\n') i++; }
+        else field+=c; }
         i++;
       }
       if(field.length||row.length){row.push(field);rows.push(row);}
       return rows;
     }
 
-    const state={headers:[],rows:[],filtered:[],sort:{col:-1,dir:1},page:1,pageSize:25,q:''};
+    // ====== estado ======
+    const state={headers:[],rows:[],filtered:[],sort:{col:-1,dir:1},page:1,pageSize:25,q:'',wrap:false,dense:false};
 
+    // ====== helpers ======
     function setStatus(msg,level="info"){
       const el=document.getElementById("status");
       el.textContent=msg;
@@ -93,54 +113,115 @@
     }
     function normalize(s){return String(s||"").normalize("NFD").replace(/\p{Diacritic}/gu,"").toLowerCase();}
 
+    // detecta linhas de seção (ex.: "COMANDO AGUIAR") — maioria vazia/'-' e 1ª célula não vazia
+    function isSectionRow(row){
+      const rest=row.slice(1);
+      const empties=rest.filter(c=>!c||c.trim()==='-'||c.trim()==='–').length;
+      return row[0] && empties>=Math.max(2,Math.floor(rest.length*0.6));
+    }
+
+    // ====== render ======
     function renderTable(){
       const thead=document.getElementById("thead");
       const tbody=document.getElementById("tbody");
-      thead.innerHTML=""; const trh=document.createElement("tr");
+      thead.innerHTML=""; tbody.innerHTML="";
+
+      // Cabeçalho com 1ª e 2ª colunas largas (w-48)
+      const trh=document.createElement("tr");
       state.headers.forEach((h,idx)=>{
-        const th=document.createElement("th"); th.className="text-left sticky top-0 z-10 border-b border-white/10";
-        const btn=document.createElement("button"); btn.className="px-3 py-2 w-full hover:bg-white/5";
+        const th=document.createElement("th");
+        th.className="text-left border-b border-white/10";
+        const btn=document.createElement("button");
+        btn.className="px-3 py-3 w-full hover:bg-white/5 font-semibold text-slate-200";
         btn.innerHTML=`<span>${h||"-"}</span>${state.sort.col===idx?(state.sort.dir===1?" ▲":" ▼"):""}`;
-        btn.addEventListener("click",()=>{ if(state.sort.col===idx) state.sort.dir*=-1; else {state.sort.col=idx;state.sort.dir=1;}
-          applyFilterAndSort(); renderBody(); });
-        th.appendChild(btn); trh.appendChild(th);
-      }); thead.appendChild(trh); renderBody();
+        btn.addEventListener("click",()=>{ if(state.sort.col===idx) state.sort.dir*=-1; else {state.sort.col=idx; state.sort.dir=1;} applyFilterSort(); renderBody(); });
+        th.appendChild(btn);
+        if(idx===0){ th.style.minWidth="12rem"; th.classList.add("sticky-col-0"); }
+        if(idx===1){ th.style.minWidth="12rem"; th.classList.add("sticky-col-1"); }
+        trh.appendChild(th);
+      });
+      thead.appendChild(trh);
+
+      renderBody();
     }
+
     function renderBody(){
-      const tbody=document.getElementById("tbody"); const pagerInfo=document.getElementById("pagerInfo");
-      tbody.innerHTML=""; const start=(state.page-1)*state.pageSize; const end=start+state.pageSize;
-      state.filtered.slice(start,end).forEach(r=>{
-        const tr=document.createElement("tr"); tr.className="border-t border-white/5";
-        r.forEach(cell=>{const td=document.createElement("td"); td.className="cell px-3 py-2"; td.textContent=cell; tr.appendChild(td);});
+      const tbody=document.getElementById("tbody");
+      tbody.innerHTML="";
+      const start=(state.page-1)*state.pageSize, end=start+state.pageSize;
+      const pageRows=state.filtered.slice(start,end);
+
+      pageRows.forEach((r)=>{
+        if(isSectionRow(r)){
+          const tr=document.createElement("tr");
+          const th=document.createElement("th");
+          th.colSpan=state.headers.length;
+          th.className="bg-slate-800/70 text-amber-300/90 font-semibold uppercase tracking-wide px-3 py-2 sticky z-[1]";
+          th.style.position="sticky"; th.style.left="0";
+          th.textContent=(r[0]||"").toString().trim();
+          tr.appendChild(th); tbody.appendChild(tr); return;
+        }
+
+        const tr=document.createElement("tr");
+        tr.className="row hover:bg-white/5 transition";
+        r.forEach((cell,idx)=>{
+          const td=document.createElement("td");
+          td.className=`px-3 ${state.dense?'py-1.5':'py-2.5'} ${state.wrap?'wrap-cell':'truncate-cell'}`;
+          // colunas fixas
+          if(idx===0){ td.style.minWidth="12rem"; td.classList.add("sticky-col-0"); td.classList.add("font-medium"); }
+          if(idx===1){ td.style.minWidth="12rem"; td.classList.add("sticky-col-1"); }
+
+          td.title = String(cell||""); // tooltip completo
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
         tbody.appendChild(tr);
       });
+
+      // zebra
+      Array.from(tbody.children).forEach((tr,i)=>{
+        if(!tr.firstChild || tr.firstChild.colSpan) return; // pular seções
+        if(i%2===1) tr.classList.add("bg-white/2");
+      });
+
+      // paginação
       const totalPages=Math.max(1,Math.ceil(state.filtered.length/state.pageSize));
-      pagerInfo.textContent=`Página ${state.page} de ${totalPages} — ${state.filtered.length} registros`;
+      document.getElementById("pagerInfo").textContent=`Página ${state.page} de ${totalPages} — ${state.filtered.length} registros`;
       document.getElementById("prev").disabled=state.page<=1;
       document.getElementById("next").disabled=state.page>=totalPages;
     }
-    function applyFilterAndSort(){
+
+    // ====== filter/sort ======
+    function applyFilterSort(){
       const qn=normalize(state.q);
-      state.filtered=state.rows.filter(r=>!qn||r.some(v=>normalize(v).includes(qn)));
-      if(state.sort.col>=0){const c=state.sort.col,d=state.sort.dir;
+      state.filtered=state.rows.filter(r=>!qn || r.some(v=>normalize(v).includes(qn)));
+      if(state.sort.col>=0){
+        const c=state.sort.col, d=state.sort.dir;
         state.filtered.sort((a,b)=>{const A=normalize(a[c]),B=normalize(b[c]); return A<B?-1*d:A>B?1*d:0;});
       }
       state.page=1;
     }
-    function exportFilteredCSV(){
-      const rows=[state.headers,...state.filtered];
+
+    // ====== export ======
+    function exportVisibleCSV(){
+      const rows=[state.headers, ...state.filtered];
       const esc=(s)=>/[",\n]/.test(String(s))?`"${String(s).replace(/"/g,'""')}"`:String(s);
       const csv=rows.map(r=>r.map(esc).join(",")).join("\n");
-      const blob=new Blob([csv],{type:"text/csv;charset=utf-8"}); const a=document.createElement("a");
-      a.href=URL.createObjectURL(blob); a.download="hierarquia-filtrada.csv"; a.click(); URL.revokeObjectURL(a.href);
+      const a=document.createElement("a");
+      a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+      a.download="hierarquia-visivel.csv"; a.click(); URL.revokeObjectURL(a.href);
     }
 
+    // ====== fetch ======
     async function fetchCSVwithFallback(){
-      let lastErr=null; for(const makeUrl of csvURLs){
-        const url=makeUrl(); try{
+      let lastErr=null;
+      for(const make of csvURLs){
+        const url=make();
+        try{
           const res=await fetch(url,{mode:"cors"});
           if(!res.ok) throw new Error(`HTTP ${res.status}`);
-          const txt=await res.text(); if(!txt.trim()) throw new Error("CSV vazio");
+          const txt=await res.text();
+          if(!txt.trim()) throw new Error("CSV vazio");
           return {txt,url};
         }catch(e){ lastErr={err:e,url}; }
       }
@@ -149,32 +230,33 @@
 
     async function loadSheet(){
       try{
-        setStatus("Baixando planilha publicada…");
-        const {txt,url}=await fetchCSVwithFallback();
-        const data=parseCSV(txt); const [headers,...rows]=data;
+        setStatus("Baixando planilha…");
+        const {txt}=await fetchCSVwithFallback();
+        const data=parseCSV(txt);
+
+        // remove linhas totalmente vazias no topo
+        while(data.length && data[0].every(c=>!String(c||"").trim())) data.shift();
+
+        const [headers,...rows]=data;
         state.headers=headers||[]; state.rows=rows||[];
-        applyFilterAndSort(); renderTable();
+        applyFilterSort(); renderTable();
         setStatus("Planilha carregada.");
       }catch(info){
-        const msg = `Falha ao carregar CSV publicado. ${info?.err?info.err.message:info}`;
-        setStatus(msg,"error");
-        if(info?.url){
-          const el=document.createElement("div");
-          el.className="text-xs mt-2";
-          el.innerHTML=`<a href="${info.url}" target="_blank" class="underline text-amber-300">Abrir CSV publicado</a> (deve baixar/abrir no navegador).`;
-          document.getElementById("status").appendChild(el);
-        }
+        setStatus(`Falha ao carregar CSV. ${info?.err?info.err.message:info}`,"error");
       }
     }
 
-    // UI
-    document.getElementById("q").addEventListener("input",(e)=>{state.q=e.target.value;applyFilterAndSort();renderBody();});
+    // ====== UI ======
+    document.getElementById("q").addEventListener("input",(e)=>{state.q=e.target.value;applyFilterSort();renderBody();});
     document.getElementById("pageSize").addEventListener("change",(e)=>{state.pageSize=parseInt(e.target.value,10);state.page=1;renderBody();});
     document.getElementById("prev").addEventListener("click",()=>{if(state.page>1){state.page--;renderBody();}});
     document.getElementById("next").addEventListener("click",()=>{const t=Math.max(1,Math.ceil(state.filtered.length/state.pageSize));if(state.page<t){state.page++;renderBody();}});
     document.getElementById("btnReload").addEventListener("click",loadSheet);
-    document.getElementById("btnExport").addEventListener("click",exportFilteredCSV);
+    document.getElementById("btnExport").addEventListener("click",exportVisibleCSV);
+    document.getElementById("toggleWrap").addEventListener("change",(e)=>{state.wrap=e.target.checked;renderBody();});
+    document.getElementById("toggleDense").addEventListener("change",(e)=>{state.dense=e.target.checked;renderBody();});
 
+    // start
     loadSheet();
   </script>
 </body>
