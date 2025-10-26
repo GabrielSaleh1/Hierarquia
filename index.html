@@ -9,24 +9,22 @@
 <style>
   html,body{height:100%} body{background:#020617}
   .grid-wrap{overflow:auto; max-height:calc(100vh - 210px);}
-  .sheet{display:grid; grid-auto-rows:minmax(36px,auto); position:relative;}
-  .cell{border-top:1px solid rgba(255,255,255,.06); padding:.5rem .75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .sheet{display:grid; grid-auto-rows:minmax(44px,auto); position:relative;}
+  .cell{border-top:1px solid rgba(255,255,255,.06); padding:.55rem .75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .cell[contenteditable="true"]:focus{outline:2px solid rgba(245,158,11,.5); border-radius:.5rem; background:rgba(255,255,255,.04)}
   .row:hover .cell{background:rgba(255,255,255,.02);}
-
-  /* cabeçalho continua fixo */
-  .head{position:sticky; top:0; z-index:5; background:rgba(2,6,23,.9); backdrop-filter:blur(6px); border-bottom:1px solid rgba(255,255,255,.08); font-weight:600;}
+  .head{position:sticky; top:0; z-index:5; background:rgba(2,6,23,.93); backdrop-filter:blur(6px); border-bottom:1px solid rgba(255,255,255,.08); font-weight:600;}
+  .wrap{white-space:normal; word-break:break-word}
+  .section{grid-column:1 / -1; font-weight:700; text-transform:uppercase; color:rgb(253,230,138);
+           background:rgba(120,53,15,.15); border-top:1px solid rgba(253,230,138,.25); padding:.5rem .75rem}
 
   /* chips flag */
-  .flag{display:inline-flex; align-items:center; gap:.5rem; padding:.15rem .55rem; border-radius:999px; font-size:.75rem; font-weight:600;}
+  .flag{display:inline-flex; align-items:center; gap:.5rem; padding:.15rem .55rem; border-radius:999px; font-size:.75rem; font-weight:700; letter-spacing:.2px;}
   .flag.true{background:rgba(34,197,94,.15); color:rgb(134,239,172); border:1px solid rgba(34,197,94,.3)}
   .flag.false{background:rgba(239,68,68,.15); color:rgb(252,165,165); border:1px solid rgba(239,68,68,.3)}
   .flag .dot{width:.5rem; height:.5rem; border-radius:999px;}
   .flag.true .dot{background:rgb(34,197,94)}
   .flag.false .dot{background:rgb(239,68,68)}
-
-  .section{grid-column:1 / -1; font-weight:700; text-transform:uppercase; color:rgb(253,230,138);
-           background:rgba(120,53,15,.15); border-top:1px solid rgba(253,230,138,.25); padding:.4rem .75rem}
 </style>
 </head>
 <body class="dark text-slate-100">
@@ -35,11 +33,11 @@
     <div class="h-10 w-10 rounded-lg grid place-items-center font-black border border-amber-500/40 bg-slate-900/60">R</div>
     <div>
       <h1 class="text-xl font-bold">Planilha de Hierarquia — RP</h1>
-      <p class="text-sm text-slate-400">Edição direta, sem colunas fixas</p>
+      <p class="text-sm text-slate-400">Edição direta, agrupamento por Graduação e chips para Licença Premium</p>
     </div>
     <div class="ml-auto toolbar flex flex-wrap items-center gap-2">
       <button id="addRow" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">+ Linha</button>
-      <button id="addSection" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">+ Seção</button>
+      <button id="addSection" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">+ Seção personalizada</button>
       <button id="delLast" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">– Remover última</button>
       <button id="saveJson" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">Baixar JSON</button>
       <label class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs cursor-pointer">Carregar JSON
@@ -75,43 +73,68 @@
 </div>
 
 <script>
-/* ===== SCHEMA ===== */
+/* =============== COLUNAS (ordem exata) =============== */
 const COLUMNS = [
-  { key:"matricula", label:"Matrícula", width:"10rem", type:"text" },
-  { key:"nome",      label:"Nome",      width:"12rem", type:"text" },
-  { key:"guerra",    label:"Nome de Guerra", width:"12rem", type:"text" },
-  { key:"patente",   label:"Patente",   width:"10rem", type:"select", options:[
-      "TEN.CEL PM","MAJ PM","CAP PM","1º TEN PM","2º TEN PM","ASP OF PM",
+  { key:"matricula",       label:"Matrícula",             width:"10rem", type:"text" },
+  { key:"nome",            label:"Nome",                  width:"14rem", type:"text" },
+  { key:"guerra",          label:"Nome de Guerra",        width:"12rem", type:"text" },
+  { key:"patente",         label:"Patente",               width:"11rem", type:"select", options:[
+      "CEL PM","TEN.CEL PM","MAJ PM","CAP PM","1º TEN PM","2º TEN PM","ASP OF PM",
       "SUBTEN PM","1º SGT PM","2º SGT PM","3º SGT PM","CB PM","SD PM","ALUNO"
-    ]
-  },
-  { key:"funcao",    label:"Função",    width:"26rem", type:"text", wrap:true },
-  { key:"lp25",      label:"LP 25",     width:"7rem",  type:"flag", trueLabel:"VERDADEIRO", falseLabel:"FALSO" },
-  { key:"cdc",       label:"CDC",       width:"7rem",  type:"flag", trueLabel:"VERDADEIRO", falseLabel:"FALSO" },
-  { key:"cpe",       label:"CPE",       width:"7rem",  type:"flag", trueLabel:"VERDADEIRO", falseLabel:"FALSO" },
-  { key:"data_entrada", label:"Data de Entrada", width:"10rem", type:"date" },
-  { key:"obs",          label:"Observações | Padrinhos", width:"18rem", type:"text", wrap:true },
+    ]},
+  { key:"funcao",          label:"Função",                width:"32rem", type:"text", wrap:true }, /* texto longo */
+
+  { key:"edital",          label:"Edital",                width:"10rem", type:"text" },
+  { key:"situacao",        label:"Situação",              width:"11rem", type:"select", options:["ATIVO","AFastado","Férias","Afastamento Médico","Punição","Reserva"] },
+  { key:"licenca_premium", label:"Licença Premium",       width:"12rem", type:"flag", trueLabel:"ATIVA", falseLabel:"INATIVA" },
+  { key:"ultima_promocao", label:"Última Promoção",       width:"12rem", type:"date" },
+  { key:"turma",           label:"Turma",                 width:"9rem",  type:"text" },
+  { key:"cia",             label:"CIA",                   width:"9rem",  type:"text" },
+  { key:"data_entrada",    label:"Data de Entrada",       width:"12rem", type:"date" },
+  { key:"padrinhos",       label:"Padrinhos",             width:"16rem", type:"text", wrap:true },
+  { key:"pad",             label:"PAD",                   width:"8rem",  type:"text" },
 ];
 
-/* ===== DADOS EXEMPLO ===== */
+/* ======== GRADUAÇÃO por Patente (agrupamento automático) ======== */
+const GRAD_ORDER = [
+  { label:"Oficiais Superiores",  match: p => /(^CEL\b|TEN\.?CEL|MAJ)/i.test(p) },
+  { label:"Oficiais Intermediários", match: p => /\bCAP\b/i.test(p) },
+  { label:"Oficiais Subalternos", match: p => /(1º\s*TEN|2º\s*TEN|ASP)/i.test(p) },
+  { label:"Praças Graduados",     match: p => /(SUBTEN|SGT|CB|SD)/i.test(p) },
+  { label:"Outros",               match: p => true },
+];
+function patenteToGraduacao(patente="") {
+  const p = String(patente).toUpperCase();
+  const g = GRAD_ORDER.find(g => g.match(p)) || GRAD_ORDER[GRAD_ORDER.length-1];
+  return g.label;
+}
+
+/* =============== EXEMPLO INICIAL (pode apagar) =============== */
 const INITIAL_ROWS = [
-  { type:"section", title:"COMANDO AGUIAR" },
-  { matricula:"2410202230", nome:"Matheus Bezerra", guerra:"Bezerra", patente:"TEN.CEL PM", funcao:"COMANDANTE AGUIAR / COMANDANTE SINDICÂNCIA / COMANDANTE CCOMSOC", lp25:true, cdc:true, cpe:true, data_entrada:"2022-03-01", obs:"-" },
-  { matricula:"1042022255", nome:"Davi Costa", guerra:"Rivotril", patente:"MAJ PM", funcao:"SUBCOMANDANTE AGUIAR / SUPERVISOR SINDICÂNCIAS / SUPERVISOR CCOMSOC", lp25:false, cdc:false, cpe:true, data_entrada:"2022-04-01", obs:"-" },
-  { type:"section", title:"OFICIAIS INTERMEDIÁRIOS" },
-  { matricula:"1072023259", nome:"Saléh Matias", guerra:"Tranca Rua", patente:"CAP PM", funcao:"COMANDANTE 1ª CIA / COMANDO DECIC / COMANDANTE P1 / COMANDANTE P4", lp25:false, cdc:true, cpe:true, data_entrada:"2023-07-01", obs:"-" },
+  { matricula:"2410202230", nome:"Matheus Bezerra", guerra:"Bezerra", patente:"TEN.CEL PM",
+    funcao:"COMANDANTE AGUIAR / COMANDANTE SINDICÂNCIA / COMANDANTE CCOMSOC",
+    edital:"", situacao:"ATIVO", licenca_premium:true, ultima_promocao:"2024-08-01",
+    turma:"", cia:"", data_entrada:"2022-03-01", padrinhos:"-", pad:"0/3" },
+
+  { matricula:"1042022255", nome:"Davi Costa", guerra:"Rivotril", patente:"MAJ PM",
+    funcao:"SUBCOMANDANTE AGUIAR / SUPERVISOR SINDICÂNCIAS / SUPERVISOR CCOMSOC",
+    edital:"", situacao:"ATIVO", licenca_premium:false, ultima_promocao:"2024-06-10",
+    turma:"", cia:"", data_entrada:"2022-04-01", padrinhos:"-", pad:"0/3" },
+
+  { matricula:"1072023259", nome:"Saléh Matias", guerra:"Tranca Rua", patente:"CAP PM",
+    funcao:"COMANDANTE 1ª CIA / COMANDO DECIC / COMANDANTE P1 / COMANDANTE P4",
+    edital:"", situacao:"ATIVO", licenca_premium:true, ultima_promocao:"2025-01-12",
+    turma:"", cia:"CMT. 1ª CIA", data_entrada:"2023-07-01", padrinhos:"-", pad:"0/3" },
 ];
 
-/* ===== STATE ===== */
+/* ===================== ESTADO ===================== */
 let ROWS = loadFromLocal() || INITIAL_ROWS.slice();
 const state = { q:"" };
 
-/* ===== RENDER ===== */
+/* ===================== RENDER ===================== */
 const sheetEl = document.getElementById('sheet');
 
-function computeCols(){
-  sheetEl.style.gridTemplateColumns = COLUMNS.map(c=>c.width||"12rem").join(' ');
-}
+function computeCols(){ sheetEl.style.gridTemplateColumns = COLUMNS.map(c=>c.width||"12rem").join(' '); }
 function renderHeader(){
   const frag=document.createDocumentFragment();
   COLUMNS.forEach(col=>{
@@ -131,19 +154,10 @@ function flagChip(value, col){
   return div;
 }
 
-function renderRow(row, idx){
-  if(row.type==="section"){
-    const s=document.createElement('div');
-    s.className="section";
-    s.textContent=row.title||"(Seção)";
-    sheetEl.appendChild(s);
-    return;
-  }
+function renderDataRow(row, idx){
   COLUMNS.forEach(col=>{
     const cell=document.createElement('div');
     cell.className="cell row";
-    cell.dataset.row=idx; cell.dataset.key=col.key;
-
     const val=row[col.key]??"";
     if(col.type==="flag"){
       const chip=flagChip(val,col);
@@ -167,7 +181,7 @@ function renderRow(row, idx){
     } else {
       const editable=document.createElement('div');
       editable.contentEditable="true";
-      editable.className="w-full";
+      editable.className="w-full" + (col.wrap?' wrap':'');
       editable.textContent=val;
       editable.addEventListener('blur',()=>{ row[col.key]=editable.textContent.trim(); persist(); });
       cell.appendChild(editable);
@@ -177,30 +191,59 @@ function renderRow(row, idx){
 }
 
 function renderBody(){
-  sheetEl.innerHTML="";
-  renderHeader();
+  sheetEl.innerHTML=""; renderHeader();
+
+  // filtra por busca
   const q=normalize(state.q);
-  const rows=ROWS.filter(r=>{
-    if(r.type==="section") return true;
-    if(!q) return true;
+  let rows=ROWS.filter(r=>{
+    if (!q) return true;
     return COLUMNS.some(col=>normalize(r[col.key]).includes(q));
   });
-  rows.forEach((row,i)=>renderRow(row,i));
+
+  // ordena por graduação (com base na patente) e depois por patente/nome
+  rows.sort((a,b)=>{
+    const ga = GRAD_ORDER.findIndex(g => g.label===patenteToGraduacao(a.patente));
+    const gb = GRAD_ORDER.findIndex(g => g.label===patenteToGraduacao(b.patente));
+    if (ga!==gb) return ga-gb;
+    const pa = normalize(a.patente), pb = normalize(b.patente);
+    if (pa!==pb) return pa<pb?-1:1;
+    const na = normalize(a.nome), nb = normalize(b.nome);
+    return na<nb?-1:na>nb?1:0;
+  });
+
+  // insere seções automáticas quando muda a graduação
+  let currentGrad = null;
+  rows.forEach((row, i) => {
+    const grad = patenteToGraduacao(row.patente);
+    if (grad !== currentGrad) {
+      currentGrad = grad;
+      const s=document.createElement('div');
+      s.className="section"; s.textContent=grad;
+      sheetEl.appendChild(s);
+    }
+    renderDataRow(row, i);
+  });
 }
 
 function refresh(){ computeCols(); renderBody(); }
 computeCols(); renderBody();
 
-/* ===== UI ===== */
+/* ===================== UI ===================== */
 document.getElementById('q').addEventListener('input',e=>{ state.q=e.target.value; renderBody(); });
 document.getElementById('density').addEventListener('change',e=>{
   const h=parseInt(e.target.value,10);
   document.querySelectorAll('.cell').forEach(el=>el.style.minHeight=h+'px');
 });
 
-/* ===== CONTROLES ===== */
-document.getElementById('addRow').addEventListener('click',()=>{ ROWS.push(Object.fromEntries(COLUMNS.map(c=>[c.key,""]))); persist(); refresh(); });
-document.getElementById('addSection').addEventListener('click',()=>{ const title=prompt("Título da seção:","NOVA SEÇÃO"); if(title){ ROWS.push({type:"section",title}); persist(); refresh(); }});
+/* ===================== CONTROLES ===================== */
+document.getElementById('addRow').addEventListener('click',()=>{
+  ROWS.push(Object.fromEntries(COLUMNS.map(c=>[c.key,""])));
+  persist(); refresh();
+});
+document.getElementById('addSection').addEventListener('click',()=>{
+  const title=prompt("Título da seção personalizada:","COMANDO AGUIAR");
+  if(title){ ROWS.push({custom_section:title}); persist(); refresh(); }
+});
 document.getElementById('delLast').addEventListener('click',()=>{ ROWS.pop(); persist(); refresh(); });
 
 document.getElementById('saveJson').addEventListener('click',()=>{
@@ -213,7 +256,7 @@ document.getElementById('loadJson').addEventListener('change',e=>{
   r.readAsText(f);
 });
 
-/* CSV */
+/* ===== Import/Export CSV ===== */
 function parseCSV(txt){const rows=[];let i=0,f='',row=[],q=false;while(i<txt.length){const c=txt[i];if(q){if(c=='"'){if(txt[i+1]=='"'){f+='"';i++;}else q=false;}else f+=c;}else{if(c=='"')q=true;else if(c==','){row.push(f);f='';}else if(c=='\n'||c=='\r'){if(f.length||row.length){row.push(f);rows.push(row);row=[];f='';}if(c=='\r'&&txt[i+1]=='\n')i++;}else f+=c;}i++;}if(f.length||row.length){row.push(f);rows.push(row);}return rows;}
 document.getElementById('loadCsv').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
@@ -224,8 +267,8 @@ document.getElementById('loadCsv').addEventListener('change',e=>{
     lines.forEach(cells=>{
       if(cells.every(c=>!String(c||"").trim())) return;
       const obj={}; map.forEach((k,i)=>{ if(!k) return; const col=COLUMNS.find(c=>c.key===k); let v=cells[i];
-        if(col?.type==='flag'){const nv=normalize(v); obj[k]=(nv==='true'||nv==='verdadeiro'||nv==='sim'||nv==='ok');}
-        else if(col?.type==='date'){obj[k]=new Date(v).toISOString().slice(0,10);}
+        if(col?.type==='flag'){const nv=normalize(v); obj[k]=(nv==='true'||nv==='verdadeiro'||nv==='sim'||nv==='ativa'||nv==='ok');}
+        else if(col?.type==='date'){const d=new Date(v); obj[k]=isFinite(d)?d.toISOString().slice(0,10):"";}
         else {obj[k]=v;}
       }); rows.push(obj);
     });
@@ -234,13 +277,20 @@ document.getElementById('loadCsv').addEventListener('change',e=>{
 });
 document.getElementById('saveCsv').addEventListener('click',()=>{
   const rows=[]; rows.push(COLUMNS.map(c=>c.label));
-  ROWS.forEach(r=>{ if(r.type==='section') return; const arr=COLUMNS.map(col=>{ let v=r[col.key]??""; if(col.type==='flag') v=(v?(col.trueLabel||'SIM'):(col.falseLabel||'NÃO')); return v; }); rows.push(arr); });
+  ROWS.forEach(r=>{
+    const arr=COLUMNS.map(col=>{
+      let v=r[col.key]??"";
+      if(col.type==='flag') v=(v?(col.trueLabel||'SIM'):(col.falseLabel||'NÃO'));
+      return v;
+    });
+    rows.push(arr);
+  });
   const esc=s=>/[",\n]/.test(String(s))?`"${String(s).replace(/"/g,'""')}"`:String(s);
   const csv=rows.map(r=>r.map(esc).join(",")).join("\n");
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"})); a.download="hierarquia.csv"; a.click(); URL.revokeObjectURL(a.href);
 });
 
-/* utils */
+/* ===================== UTILS ===================== */
 function normalize(s){return String(s||"").normalize("NFD").replace(/\p{Diacritic}/gu,'').toLowerCase();}
 function persist(){ localStorage.setItem('rp.hierarquia.rows', JSON.stringify(ROWS)); }
 function loadFromLocal(){ try{ return JSON.parse(localStorage.getItem('rp.hierarquia.rows')||'null'); }catch{return null;} }
