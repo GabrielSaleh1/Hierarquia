@@ -36,6 +36,11 @@
     .card{border:1px solid #000;background:#fff}
     .chip.green,.chip.red{border:1px solid #000;color:#000;background:#fff}
   }
+
+  /* --- Drag and Drop highlights --- */
+  .dragging { opacity: .5; }
+  .drop-target { outline: 2px dashed #facc15; outline-offset: 2px; }
+  .drop-hint { font-size:.73rem;color:#94a3b8;padding:.35rem .5rem;border-top:1px dashed rgba(250,204,21,.4) }
 </style>
 </head>
 <body class="dark text-slate-100">
@@ -135,6 +140,8 @@ const cardPane = document.getElementById('cardPane');
 const qEl = document.getElementById('q');
 
 /* ========= LISTA ========= */
+let dragIndex = null; // índice do item sendo arrastado
+
 function renderList(q=""){
   listPane.innerHTML = "";
   const normQ = norm(q);
@@ -142,22 +149,54 @@ function renderList(q=""){
   const hasCustomSections = ROWS.some(r=>r.type==="section");
 
   if (hasCustomSections) {
-    // Respeita a ordem e as seções criadas pelo usuário
-    let started=false;
+    // dica de arrastar
+    const hint=document.createElement('div');
+    hint.className="drop-hint";
+    hint.textContent="Dica: arraste um nome e solte em cima de um título de seção para mover.";
+    listPane.appendChild(hint);
+
+    // Respeita a ordem e seções do usuário
     ROWS.forEach((entry, i) => {
       if (entry.type==="section") {
         const head = document.createElement('div');
         head.className="grad-head";
         head.textContent = entry.title || "SEÇÃO";
+
+        // alvo de drop (soltar aqui move o item logo abaixo deste título)
+        head.dataset.sectionIndex = i;
+        head.addEventListener('dragover', e => { e.preventDefault(); head.classList.add('drop-target'); });
+        head.addEventListener('dragleave', () => head.classList.remove('drop-target'));
+        head.addEventListener('drop', e => {
+          e.preventDefault();
+          head.classList.remove('drop-target');
+          if (dragIndex===null || dragIndex===undefined) return;
+          moveItemToSection(dragIndex, i);
+          dragIndex = null;
+        });
+
         listPane.appendChild(head);
-        started=true;
         return;
       }
+      // filtro
       if (normQ && !COLUMNS.some(c=>norm(entry[c.key]).includes(normQ))) return;
-      // item
-      appendItem(entry, i);
+
+      // item arrastável
+      const item = document.createElement('div');
+      item.className = "item";
+      if(i===selectedIndex) item.classList.add('active');
+      item.draggable = true;
+      item.addEventListener('dragstart', () => { dragIndex = i; item.classList.add('dragging'); });
+      item.addEventListener('dragend',   () => { item.classList.remove('dragging'); dragIndex = null; });
+
+      item.innerHTML = `
+        <div class="font-semibold">${entry.nome||"-"} <span class="text-xs text-slate-400">(${entry.guerra||"-"})</span></div>
+        <div class="text-xs text-slate-400">${entry.matricula||"-"} • ${entry.patente||"-"}</div>
+      `;
+      item.addEventListener('click',()=>{ selectedIndex=i; renderList(qEl.value); renderCard(); });
+      listPane.appendChild(item);
     });
-    if(!started){ // se o JSON tiver só seções no final etc.
+
+    if(!listPane.children.length){
       const none=document.createElement('div');
       none.className="text-slate-400 p-3"; none.textContent="Nenhum registro na seção.";
       listPane.appendChild(none);
@@ -168,7 +207,7 @@ function renderList(q=""){
   // Agrupamento por graduação (automático)
   const groups = {};
   ROWS.forEach((r,i)=>{
-    if (r.type==="section") return; // ignora seções se não for modo personalizado
+    if (r.type==="section") return;
     if (normQ && !COLUMNS.some(c=>norm(r[c.key]).includes(normQ))) return;
     const g = patenteToGraduacao(r.patente);
     (groups[g] ||= []).push({r,i});
@@ -182,14 +221,23 @@ function renderList(q=""){
     head.textContent = g.label;
     listPane.appendChild(head);
 
-    // Ordena por peso de patente (desc) e depois por nome
     arr.sort((a,b)=>{
       const rw = rankVal(b.r.patente) - rankVal(a.r.patente);
       if (rw!==0) return rw;
       return norm(a.r.nome) < norm(b.r.nome) ? -1 : 1;
     });
 
-    arr.forEach(({r,i})=> appendItem(r,i));
+    arr.forEach(({r,i})=>{
+      const item = document.createElement('div');
+      item.className = "item";
+      if(i===selectedIndex) item.classList.add('active');
+      item.innerHTML = `
+        <div class="font-semibold">${r.nome||"-"} <span class="text-xs text-slate-400">(${r.guerra||"-"})</span></div>
+        <div class="text-xs text-slate-400">${r.matricula||"-"} • ${r.patente||"-"}</div>
+      `;
+      item.addEventListener('click',()=>{ selectedIndex=i; renderList(qEl.value); renderCard(); });
+      listPane.appendChild(item);
+    });
   });
 
   if(!listPane.children.length){
@@ -200,22 +248,30 @@ function renderList(q=""){
   }
 }
 
-function appendItem(r,i){
-  const item = document.createElement('div');
-  item.className = "item";
-  if(i===selectedIndex) item.classList.add('active');
-  item.innerHTML = `
-    <div class="font-semibold">${r.nome||"-"} <span class="text-xs text-slate-400">(${r.guerra||"-"})</span></div>
-    <div class="text-xs text-slate-400">${r.matricula||"-"} • ${r.patente||"-"}</div>
-  `;
-  item.addEventListener('click',()=>{ selectedIndex=i; renderList(qEl.value); renderCard(); });
-  listPane.appendChild(item);
+// move item após o índice do título de seção
+function moveItemToSection(itemIndex, sectionIndex){
+  if(itemIndex===sectionIndex) return;
+
+  // extrai o item
+  const [item] = ROWS.splice(itemIndex,1);
+
+  // depois de remover, se o item estava acima do destino, o destino muda -1
+  let dest = sectionIndex;
+  if(itemIndex < sectionIndex) dest = sectionIndex - 1;
+
+  // encontra o próximo índice depois do título da seção
+  const insertAt = dest + 1;
+  ROWS.splice(insertAt, 0, item);
+
+  persist();
+  renderList(qEl.value);
+  renderCard();
 }
 
 /* ========= CARTEIRINHA ========= */
 function renderCard(){
   cardPane.innerHTML = "";
-  if(selectedIndex<0 || !ROWS[selectedIndex]){
+  if(selectedIndex<0 || !ROWS[selectedIndex] || ROWS[selectedIndex].type==="section"){
     cardPane.innerHTML = `<div class="text-slate-400">Selecione um policial na lista ao lado…</div>`;
     return;
   }
@@ -452,3 +508,4 @@ renderCard();
 </script>
 </body>
 </html>
+
