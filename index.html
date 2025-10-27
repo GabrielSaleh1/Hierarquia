@@ -45,7 +45,6 @@
     background:transparent; font-size:.7rem; font-weight:700;
   }
   .sec-actions button:hover{ background:rgba(248,113,113,.15); border-color:rgba(248,113,113,.7); color:#fecaca; }
-  /* login modal */
   .login-overlay{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.6); z-index:60; }
   .login-card{ background:#071029; border:1px solid rgba(255,255,255,.06); padding:1.25rem; border-radius:.75rem; width:320px; color:#e6eef8 }
   .login-card input{ width:100%; padding:.5rem; border-radius:.5rem; border:1px solid rgba(255,255,255,.08); background:#021026; color:#e6eef8 }
@@ -62,7 +61,6 @@
     </div>
     <div class="ml-auto flex flex-wrap items-center gap-2">
       <input id="q" class="w-64 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60" placeholder="Buscar por nome, matrícula, patente..." />
-      <!-- editable controls: escondidas quando NÃO autenticado -->
       <div id="editableControls" class="flex items-center gap-2 no-print" style="display:none">
         <button id="btnAdd" class="btn text-xs">+ Adicionar</button>
         <button id="btnAddSection" class="btn text-xs">+ Seção</button>
@@ -71,14 +69,10 @@
         <label class="btn text-xs cursor-pointer">Importar CSV<input id="inCSV" type="file" accept=".csv,text/csv" class="hidden"></label>
         <button id="btnSaveCSV" class="btn text-xs">Baixar CSV</button>
       </div>
-
-      <!-- public controls: sempre visíveis (ex: baixar JSON público) -->
       <div id="publicControls" class="flex items-center gap-2">
         <button id="btnSaveJSON_public" class="btn text-xs">Baixar JSON (público)</button>
         <button id="btnSaveCSV_public" class="btn text-xs">Baixar CSV (público)</button>
       </div>
-
-      <!-- autenticação -->
       <div id="authControls" class="flex items-center gap-2">
         <button id="btnLogin" class="btn text-xs">Entrar (modo edição)</button>
         <button id="btnLogout" class="btn text-xs" style="display:none">Sair (visualização)</button>
@@ -89,14 +83,12 @@
 
   <div class="panel">
     <aside class="rounded-2xl border border-white/10 bg-slate-900/40 shadow-xl scroll" id="listPane" style="max-height: calc(100vh - 160px)"></aside>
-
     <main class="card rounded-2xl p-5 shadow-xl border" id="cardPane">
       <div class="text-slate-400">Selecione um policial na lista ao lado…</div>
     </main>
   </div>
 </div>
 
-<!-- login modal (hidden) -->
 <div id="loginOverlay" class="login-overlay" style="display:none">
   <div class="login-card">
     <div class="flex items-center justify-between mb-3">
@@ -117,13 +109,8 @@
 </div>
 
 <script>
-/* ========= AUTENTICAÇÃO (client-side) ========= */
-/*
-  Nota: isso é apenas proteção client-side. Para segurança real, implementar backend com autenticação.
-  A senha de exemplo (no hash abaixo) é "senha123". Para trocar a senha gere SHA-256 HEX da nova senha
-  e substitua o valor de STORED_PW_HASH.
-*/
-const STORED_PW_HASH = "d69c7dc7fe40c59c9a2b13810e7a32d2c0d41877c85666d267ff2dfcec4f28ac"; // SHA-256("senha123")
+/* ===== AUTENTICAÇÃO ===== */
+const STORED_PW_HASH = "d69c7dc7fe40c59c9a2b13810e7a32d2c0d41877c85666d267ff2dfcec4f28ac"; // SHA-256("TropaDoBezerra2025")
 
 let isAuthenticated = false;
 
@@ -132,7 +119,6 @@ const btnLogin = document.getElementById('btnLogin');
 const btnLogout = document.getElementById('btnLogout');
 const authModeEl = document.getElementById('authMode');
 const editableControls = document.getElementById('editableControls');
-const publicControls = document.getElementById('publicControls');
 const btnSaveJSON_public = document.getElementById('btnSaveJSON_public');
 const btnSaveCSV_public = document.getElementById('btnSaveCSV_public');
 
@@ -142,6 +128,11 @@ document.getElementById('tryLogin').addEventListener('click', tryLogin);
 btnLogout.addEventListener('click', ()=> { doLogout(); });
 
 async function sha256hex(str){
+  if (!(window.crypto && crypto.subtle)) {
+    // Evita travar a página em ambientes sem WebCrypto (ex.: http sem TLS)
+    alert("Seu navegador não suporta WebCrypto (SHA-256). O login seguro não está disponível neste ambiente.");
+    return "";
+  }
   const enc = new TextEncoder();
   const buf = await crypto.subtle.digest('SHA-256', enc.encode(str));
   const arr = Array.from(new Uint8Array(buf));
@@ -150,7 +141,7 @@ async function sha256hex(str){
 async function tryLogin(){
   const pw = document.getElementById('pwInput').value || "";
   const h = await sha256hex(pw);
-  if(h === STORED_PW_HASH){
+  if(h && h === STORED_PW_HASH){
     isAuthenticated = true;
     sessionStorage.setItem('rp.auth', '1');
     loginOverlay.style.display='none';
@@ -177,15 +168,12 @@ function applyAuthUI(){
     btnLogin.style.display = "inline-block";
     btnLogout.style.display = "none";
     authModeEl.textContent = "Público";
-    // se estava em modo edição, forçar cancelar edições (re-render)
     renderList(qEl.value); renderCard();
   }
 }
-(function initAuth(){
-  applyAuthUI();
-})();
+(function initAuth(){ applyAuthUI(); })();
 
-/* ========= CAMPOS ========= */
+/* ===== CAMPOS ===== */
 const COLUMNS = [
   { key:"matricula",       label:"Matrícula",             type:"text" },
   { key:"nome",            label:"Nome",                  type:"text" },
@@ -207,7 +195,7 @@ const COLUMNS = [
   { key:"foto",            label:"Foto",                  type:"image" },
 ];
 
-/* ========= ORDENAÇÃO DE PATENTES ========= */
+/* ===== ORDENAÇÃO ===== */
 const RANK_WEIGHT = {
   "CEL PM":100, "TEN.CEL PM":90, "MAJ PM":80, "CAP PM":70,
   "1º TEN PM":60, "2º TEN PM":50, "ASP OF PM":40,
@@ -227,7 +215,7 @@ function patenteToGraduacao(p=""){
 }
 const rankVal = p => RANK_WEIGHT[p?.toUpperCase?.()] ?? 0;
 
-/* ========= DADOS INICIAIS ========= */
+/* ===== DADOS INICIAIS ===== */
 const INITIAL = [
   { matricula:"2410202230", nome:"Matheus Bezerra", guerra:"Bezerra", patente:"TEN.CEL PM",
     funcao:"COMANDANTE AGUIAR / COMANDANTE SINDICÂNCIA / COMANDANTE CCOMSOC",
@@ -249,7 +237,7 @@ const listPane = document.getElementById('listPane');
 const cardPane = document.getElementById('cardPane');
 const qEl = document.getElementById('q');
 
-/* ========= LISTA (com DnD e excluir seção) ========= */
+/* ===== LISTA ===== */
 let dragIndex = null;
 
 function renderList(q=""){
@@ -366,7 +354,7 @@ function moveItemToSection(itemIndex, sectionIndex){
   persist(); renderList(qEl.value); renderCard();
 }
 
-/* ========= CARTEIRINHA + FOTO ========= */
+/* ===== CARTEIRINHA ===== */
 function renderCard(){
   cardPane.innerHTML = "";
   if(selectedIndex<0 || !ROWS[selectedIndex] || ROWS[selectedIndex].type==="section"){
@@ -398,7 +386,6 @@ function renderCard(){
   `;
   cardPane.appendChild(header);
 
-  // Handlers da foto: click/upload, drag&drop, paste (somente se autenticado)
   const photoBox = header.querySelector('#photoBox');
   if(isAuthenticated){
     photoBox.addEventListener('click', ()=> openImagePicker(setPhotoFromFile));
@@ -414,7 +401,6 @@ function renderCard(){
       if(item){ setPhotoFromFile(item.getAsFile()); }
     };
   } else {
-    // desabilitar ações de foto no modo público
     photoBox.style.cursor = 'default';
     cardPane.onpaste = null;
   }
@@ -492,7 +478,6 @@ function renderCard(){
       node.replaceChildren(ed);
     });
 
-    // Controles de foto em modo edição
     const tools = document.createElement('div');
     tools.className="no-print flex gap-2 mt-2";
     tools.innerHTML = `
@@ -536,7 +521,6 @@ function renderCard(){
     `;
   }
 
-  /* helpers de foto */
   function openImagePicker(cb){
     const input = document.createElement('input');
     input.type='file'; input.accept='image/*';
@@ -547,17 +531,17 @@ function renderCard(){
     if(!file) return;
     const reader = new FileReader();
     reader.onload = async ()=> {
-      const resized = await resizeDataURL(reader.result, 420); // largura máx 420px
+      const resized = await resizeDataURL(reader.result, 420);
       p.foto = resized; persist(); renderCard();
     };
     reader.readAsDataURL(file);
   }
 }
 
-/* ========= BUSCA ========= */
+/* ===== BUSCA ===== */
 qEl.addEventListener('input', ()=> renderList(qEl.value));
 
-/* ========= CONTROLES ========= */
+/* ===== CONTROLES ===== */
 document.getElementById('btnAdd')?.addEventListener('click', ()=>{
   if(!isAuthenticated) return alert("Somente usuários autenticados podem adicionar.");
   const novo = Object.fromEntries(COLUMNS.map(c=>[c.key,""]));
@@ -621,9 +605,9 @@ document.getElementById('btnSaveCSV')?.addEventListener('click', ()=>{
   const rows = [];
   rows.push(COLUMNS.map(c=>c.label));
   ROWS.forEach(r=>{
-    if(r.type==="section") return; // não exporta seções
+    if(r.type==="section") return;
     rows.push(COLUMNS.map(col=>{
-      if(col.key==='foto') return ""; // CSV não leva imagem
+      if(col.key==='foto') return "";
       let v = r[col.key] ?? "";
       if(col.type==='flag') v = (v ? (col.trueLabel||'SIM') : (col.falseLabel||'NÃO'));
       return v;
@@ -636,12 +620,8 @@ document.getElementById('btnSaveCSV')?.addEventListener('click', ()=>{
   a.download="policiais.csv"; a.click(); URL.revokeObjectURL(a.href);
 });
 
-/* export público (somente dados de pessoas; sem seções; sem fotos no CSV) */
 btnSaveJSON_public.addEventListener('click', ()=>{
-  const rows = ROWS.filter(r=>r.type!=="section").map(r=>{
-    // exporta tudo, inclusive foto (dataURL) - se quiser omitir, remova
-    return r;
-  });
+  const rows = ROWS.filter(r=>r.type!=="section");
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(rows,null,2)],{type:'application/json'}));
   a.download = "policiais_publico.json"; a.click(); URL.revokeObjectURL(a.href);
@@ -664,13 +644,19 @@ btnSaveCSV_public.addEventListener('click', ()=>{
   a.download="policiais_publico.csv"; a.click(); URL.revokeObjectURL(a.href);
 });
 
-/* ========= UTILS ========= */
+/* ===== UTILS ===== */
 function formatDate(v){
   const s=String(v); const d = new Date(s);
   if(!isFinite(d)) return s||"-";
   return d.toISOString().slice(0,10).split("-").reverse().join("/");
 }
-function norm(s){return String(s||"").normalize("NFD").replace(/\p{Diacritic}/gu,'').toLowerCase();}
+// >>>> FIX DE COMPATIBILIDADE: remove acentos sem usar \p{Diacritic}
+function norm(s){
+  return String(s||"")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase();
+}
 function loadLocal(){ try{return JSON.parse(localStorage.getItem('rp.carteirinhas')||'null');}catch{return null;} }
 function persist(){ localStorage.setItem('rp.carteirinhas', JSON.stringify(ROWS)); }
 function parseCSV(txt){
@@ -685,8 +671,6 @@ function parseCSV(txt){
   if(f.length||row.length){ row.push(f); rows.push(row); }
   return rows;
 }
-
-/* redimensiona base64 para largura máx; mantém proporção */
 function resizeDataURL(dataUrl, maxW=420){
   return new Promise(resolve=>{
     const img=new Image();
@@ -701,7 +685,7 @@ function resizeDataURL(dataUrl, maxW=420){
   });
 }
 
-/* ========= start ========= */
+/* ===== start ===== */
 renderList("");
 renderCard();
 </script>
