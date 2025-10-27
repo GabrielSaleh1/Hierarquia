@@ -109,8 +109,9 @@
 </div>
 
 <script>
-/* ===== AUTENTICAÇÃO ===== */
-const STORED_PW_HASH = "d69c7dc7fe40c59c9a2b13810e7a32d2c0d41877c85666d267ff2dfcec4f28ac"; // SHA-256("TropaDoBezerra2025")
+/* ============ AUTENTICAÇÃO (client-side) ============ */
+/* Senha: TropaDoBezerra2025  (hash abaixo) */
+const STORED_PW_HASH = "d69c7dc7fe40c59c9a2b13810e7a32d2c0d41877c85666d267ff2dfcec4f28ac";
 
 let isAuthenticated = false;
 
@@ -122,15 +123,18 @@ const editableControls = document.getElementById('editableControls');
 const btnSaveJSON_public = document.getElementById('btnSaveJSON_public');
 const btnSaveCSV_public = document.getElementById('btnSaveCSV_public');
 
-btnLogin.addEventListener('click', ()=> { loginOverlay.style.display='flex'; document.getElementById('pwInput').value=''; document.getElementById('loginMsg').style.display='none'; });
+btnLogin.addEventListener('click', ()=> { 
+  loginOverlay.style.display='flex'; 
+  document.getElementById('pwInput').value=''; 
+  document.getElementById('loginMsg').style.display='none'; 
+});
 document.getElementById('closeLogin').addEventListener('click', ()=> loginOverlay.style.display='none');
 document.getElementById('tryLogin').addEventListener('click', tryLogin);
 btnLogout.addEventListener('click', ()=> { doLogout(); });
 
 async function sha256hex(str){
   if (!(window.crypto && crypto.subtle)) {
-    // Evita travar a página em ambientes sem WebCrypto (ex.: http sem TLS)
-    alert("Seu navegador não suporta WebCrypto (SHA-256). O login seguro não está disponível neste ambiente.");
+    alert("Seu navegador/ambiente não suporta WebCrypto (SHA-256). O login seguro não estará disponível aqui.");
     return "";
   }
   const enc = new TextEncoder();
@@ -168,12 +172,13 @@ function applyAuthUI(){
     btnLogin.style.display = "inline-block";
     btnLogout.style.display = "none";
     authModeEl.textContent = "Público";
-    renderList(qEl.value); renderCard();
   }
+  // sempre re-renderiza conforme o modo atual
+  renderList(document.getElementById('q').value);
+  renderCard();
 }
-(function initAuth(){ applyAuthUI(); })();
 
-/* ===== CAMPOS ===== */
+/* ============ CAMPOS ============ */
 const COLUMNS = [
   { key:"matricula",       label:"Matrícula",             type:"text" },
   { key:"nome",            label:"Nome",                  type:"text" },
@@ -195,7 +200,7 @@ const COLUMNS = [
   { key:"foto",            label:"Foto",                  type:"image" },
 ];
 
-/* ===== ORDENAÇÃO ===== */
+/* ============ ORDENAÇÃO DE PATENTES ============ */
 const RANK_WEIGHT = {
   "CEL PM":100, "TEN.CEL PM":90, "MAJ PM":80, "CAP PM":70,
   "1º TEN PM":60, "2º TEN PM":50, "ASP OF PM":40,
@@ -215,7 +220,7 @@ function patenteToGraduacao(p=""){
 }
 const rankVal = p => RANK_WEIGHT[p?.toUpperCase?.()] ?? 0;
 
-/* ===== DADOS INICIAIS ===== */
+/* ============ DADOS INICIAIS ============ */
 const INITIAL = [
   { matricula:"2410202230", nome:"Matheus Bezerra", guerra:"Bezerra", patente:"TEN.CEL PM",
     funcao:"COMANDANTE AGUIAR / COMANDANTE SINDICÂNCIA / COMANDANTE CCOMSOC",
@@ -237,7 +242,7 @@ const listPane = document.getElementById('listPane');
 const cardPane = document.getElementById('cardPane');
 const qEl = document.getElementById('q');
 
-/* ===== LISTA ===== */
+/* ============ LISTA (com DnD e seções) ============ */
 let dragIndex = null;
 
 function renderList(q=""){
@@ -300,7 +305,6 @@ function renderList(q=""){
     return;
   }
 
-  // Agrupamento automático
   const groups = {};
   ROWS.forEach((r,i)=>{
     if (r.type==="section") return;
@@ -354,7 +358,7 @@ function moveItemToSection(itemIndex, sectionIndex){
   persist(); renderList(qEl.value); renderCard();
 }
 
-/* ===== CARTEIRINHA ===== */
+/* ============ CARTEIRINHA + FOTO ============ */
 function renderCard(){
   cardPane.innerHTML = "";
   if(selectedIndex<0 || !ROWS[selectedIndex] || ROWS[selectedIndex].type==="section"){
@@ -538,10 +542,10 @@ function renderCard(){
   }
 }
 
-/* ===== BUSCA ===== */
+/* ============ BUSCA ============ */
 qEl.addEventListener('input', ()=> renderList(qEl.value));
 
-/* ===== CONTROLES ===== */
+/* ============ CONTROLES ============ */
 document.getElementById('btnAdd')?.addEventListener('click', ()=>{
   if(!isAuthenticated) return alert("Somente usuários autenticados podem adicionar.");
   const novo = Object.fromEntries(COLUMNS.map(c=>[c.key,""]));
@@ -644,13 +648,13 @@ btnSaveCSV_public.addEventListener('click', ()=>{
   a.download="policiais_publico.csv"; a.click(); URL.revokeObjectURL(a.href);
 });
 
-/* ===== UTILS ===== */
+/* ============ UTILS ============ */
 function formatDate(v){
   const s=String(v); const d = new Date(s);
   if(!isFinite(d)) return s||"-";
   return d.toISOString().slice(0,10).split("-").reverse().join("/");
 }
-// >>>> FIX DE COMPATIBILIDADE: remove acentos sem usar \p{Diacritic}
+// compatível com todos: remove acentos sem \p{Diacritic}
 function norm(s){
   return String(s||"")
     .normalize("NFD")
@@ -685,9 +689,25 @@ function resizeDataURL(dataUrl, maxW=420){
   });
 }
 
-/* ===== start ===== */
-renderList("");
-renderCard();
+/* ============ start (robusto) ============ */
+window.addEventListener('error', (e) => {
+  console.error(e?.error || e);
+  const pane = document.getElementById('cardPane');
+  if (pane) pane.innerHTML = `<div class="text-red-300">Erro ao iniciar: ${String(e.message||e).replace(/</g,'&lt;')}</div>`;
+});
+function boot() {
+  applyAuthUI();                      // aplica modo salvo antes de renderizar
+  if (!Array.isArray(ROWS) || ROWS.length === 0) {
+    ROWS = INITIAL.slice(); persist();
+  }
+  renderList("");                     // primeira render
+  renderCard();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', boot, { once: true });
+} else {
+  boot();
+}
 </script>
 </body>
 </html>
