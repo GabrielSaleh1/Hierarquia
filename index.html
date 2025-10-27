@@ -3,105 +3,96 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Planilha de Hierarquia — RP</title>
+<title>Carteirinhas do Batalhão — RP</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={darkMode:'class',theme:{extend:{}}}</script>
 <style>
   html,body{height:100%} body{background:#020617}
-  .grid-wrap{overflow:auto; max-height:calc(100vh - 210px);}
-  .sheet{display:grid; grid-auto-rows:minmax(44px,auto); position:relative;}
-  .cell{border-top:1px solid rgba(255,255,255,.06); padding:.55rem .75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .cell[contenteditable="true"]:focus{outline:2px solid rgba(245,158,11,.5); border-radius:.5rem; background:rgba(255,255,255,.04)}
-  .row:hover .cell{background:rgba(255,255,255,.02);}
-  .head{position:sticky; top:0; z-index:5; background:rgba(2,6,23,.93); backdrop-filter:blur(6px); border-bottom:1px solid rgba(255,255,255,.08); font-weight:600;}
-  .wrap{white-space:normal; word-break:break-word}
-  .section{grid-column:1 / -1; font-weight:700; text-transform:uppercase; color:rgb(253,230,138);
-           background:rgba(120,53,15,.15); border-top:1px solid rgba(253,230,138,.25); padding:.5rem .75rem}
-
-  /* chips flag */
-  .flag{display:inline-flex; align-items:center; gap:.5rem; padding:.15rem .55rem; border-radius:999px; font-size:.75rem; font-weight:700; letter-spacing:.2px;}
-  .flag.true{background:rgba(34,197,94,.15); color:rgb(134,239,172); border:1px solid rgba(34,197,94,.3)}
-  .flag.false{background:rgba(239,68,68,.15); color:rgb(252,165,165); border:1px solid rgba(239,68,68,.3)}
-  .flag .dot{width:.5rem; height:.5rem; border-radius:999px;}
-  .flag.true .dot{background:rgb(34,197,94)}
-  .flag.false .dot{background:rgb(239,68,68)}
-
-  /* Correção de contraste para selects em tema escuro */
-  select{background-color:#0d1322!important;color:#e5e7eb!important;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:4px 6px;font-weight:500;cursor:pointer;appearance:none}
+  .panel{display:grid; grid-template-columns: 340px 1fr; gap:1rem;}
+  .scroll{overflow:auto}
+  .card{background:linear-gradient(135deg,#0b1220 0%, #0e172a 100%); border:1px solid rgba(255,255,255,.08)}
+  .chip{display:inline-flex;align-items:center;gap:.5rem;padding:.15rem .55rem;border-radius:999px;font-size:.75rem;font-weight:700;letter-spacing:.2px;border:1px solid transparent}
+  .chip.green{background:rgba(34,197,94,.15);color:rgb(134,239,172);border-color:rgba(34,197,94,.3)}
+  .chip.red{background:rgba(239,68,68,.15);color:rgb(252,165,165);border-color:rgba(239,68,68,.3)}
+  .grad-head{position:sticky;top:0;z-index:5;background:rgba(2,6,23,.95);backdrop-filter:blur(6px);padding:.4rem .5rem;border-bottom:1px solid rgba(255,255,255,.1);color:#facc15;text-transform:uppercase;font-weight:700}
+  .item{padding:.55rem .65rem;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer}
+  .item:hover{background:rgba(255,255,255,.04)}
+  .item.active{background:rgba(250,204,21,.08);border-left:3px solid #facc15}
+  .lbl{color:#94a3b8}
+  .value{color:#e5e7eb}
+  .kv{display:grid;grid-template-columns: 170px 1fr;gap:.5rem .75rem}
+  .photo{width:104px;height:140px;border-radius:.75rem;background:#0b1220;border:1px solid rgba(255,255,255,.08);display:grid;place-items:center;color:#94a3b8}
+  .btn{padding:.5rem .75rem;border:1px solid rgba(255,255,255,.12);border-radius:.65rem;background:transparent}
+  .btn:hover{background:rgba(255,255,255,.06)}
+  /* selects visíveis no dark */
+  select{background-color:#0d1322!important;color:#e5e7eb!important;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:4px 6px;font-weight:500;appearance:none}
   select option{background-color:#0d1322!important;color:#e5e7eb!important}
   select:focus{outline:2px solid #facc15; outline-offset:1px}
   :root,select,select option{color-scheme:dark}
+  @media (max-width: 900px){ .panel{grid-template-columns:1fr} }
+  @media print{
+    body{background:#fff;color:#000}
+    .no-print{display:none!important}
+    .card{border:1px solid #000;background:#fff}
+    .chip.green,.chip.red{border:1px solid #000;color:#000;background:#fff}
+  }
 </style>
 </head>
 <body class="dark text-slate-100">
 <div class="max-w-7xl mx-auto px-4 py-6">
-  <header class="mb-4 flex items-center gap-3">
+  <header class="mb-4 flex items-center gap-3 no-print">
     <div class="h-10 w-10 rounded-lg grid place-items-center font-black border border-amber-500/40 bg-slate-900/60">R</div>
     <div>
-      <h1 class="text-xl font-bold">Planilha de Hierarquia — RP</h1>
-      <p class="text-sm text-slate-400">Edição direta, agrupamento por Graduação e chips para Licença Premium</p>
+      <h1 class="text-xl font-bold">Carteirinhas do Batalhão — RP</h1>
+      <p class="text-sm text-slate-400">Selecione um policial à esquerda para ver a carteirinha</p>
     </div>
-    <div class="ml-auto toolbar flex flex-wrap items-center gap-2">
-      <button id="addRow" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">+ Linha</button>
-      <button id="addSection" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">+ Seção personalizada</button>
-      <button id="delLast" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">– Remover última</button>
-      <button id="saveJson" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">Baixar JSON</button>
-      <label class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs cursor-pointer">Carregar JSON
-        <input id="loadJson" type="file" accept="application/json" class="hidden">
-      </label>
-      <label class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs cursor-pointer">Importar CSV
-        <input id="loadCsv" type="file" accept=".csv,text/csv" class="hidden">
-      </label>
-      <button id="saveCsv" class="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs">Baixar CSV</button>
+    <div class="ml-auto flex flex-wrap items-center gap-2">
+      <div class="relative">
+        <input id="q" class="w-64 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60" placeholder="Buscar por nome, matrícula, patente..." />
+      </div>
+      <button id="btnAdd" class="btn text-xs">+ Adicionar</button>
+      <button id="btnSaveJSON" class="btn text-xs">Baixar JSON</button>
+      <label class="btn text-xs cursor-pointer">Carregar JSON<input id="inJSON" type="file" accept="application/json" class="hidden"></label>
+      <label class="btn text-xs cursor-pointer">Importar CSV<input id="inCSV" type="file" accept=".csv,text/csv" class="hidden"></label>
+      <button id="btnSaveCSV" class="btn text-xs">Baixar CSV</button>
     </div>
   </header>
 
-  <section class="mb-3 grid md:grid-cols-3 gap-3">
-    <div class="md:col-span-2">
-      <label class="text-sm text-slate-400">Buscar</label>
-      <input id="q" class="w-full mt-1 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60" placeholder="nome, matrícula, patente, função..." />
-    </div>
-    <div>
-      <label class="text-sm text-slate-400">Densidade</label>
-      <select id="density" class="w-full mt-1 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60">
-        <option value="36">Compacta</option>
-        <option value="44" selected>Normal</option>
-        <option value="56">Conforto</option>
-      </select>
-    </div>
-  </section>
+  <div class="panel">
+    <!-- LISTA -->
+    <aside class="rounded-2xl border border-white/10 bg-slate-900/40 shadow-xl scroll" id="listPane" style="max-height: calc(100vh - 160px)">
+      <!-- preenchido via JS -->
+    </aside>
 
-  <div id="status" class="mb-3 text-sm text-slate-400">Pronto.</div>
-
-  <div id="gridWrap" class="grid-wrap rounded-2xl border border-white/10 bg-slate-900/40 shadow-xl">
-    <div id="sheet" class="sheet"></div>
+    <!-- CARTEIRINHA -->
+    <main class="card rounded-2xl p-5 shadow-xl border" id="cardPane">
+      <div class="text-slate-400">Selecione um policial na lista ao lado…</div>
+    </main>
   </div>
 </div>
 
 <script>
-/* =============== COLUNAS (ordem exata) =============== */
+/* ========= COLUNAS / CAMPOS ========= */
 const COLUMNS = [
-  { key:"matricula",       label:"Matrícula",             width:"10rem", type:"text" },
-  { key:"nome",            label:"Nome",                  width:"14rem", type:"text" },
-  { key:"guerra",          label:"Nome de Guerra",        width:"12rem", type:"text" },
-  { key:"patente",         label:"Patente",               width:"11rem", type:"select", options:[
+  { key:"matricula",       label:"Matrícula",             type:"text" },
+  { key:"nome",            label:"Nome",                  type:"text" },
+  { key:"guerra",          label:"Nome de Guerra",        type:"text" },
+  { key:"patente",         label:"Patente",               type:"select", options:[
       "CEL PM","TEN.CEL PM","MAJ PM","CAP PM","1º TEN PM","2º TEN PM","ASP OF PM",
       "SUBTEN PM","1º SGT PM","2º SGT PM","3º SGT PM","CB PM","SD PM","ALUNO"
     ]},
-  { key:"funcao",          label:"Função",                width:"32rem", type:"text", wrap:true }, /* texto longo */
-
-  { key:"edital",          label:"Edital",                width:"10rem", type:"text" },
-  { key:"situacao",        label:"Situação",              width:"11rem", type:"select", options:["ATIVO","Afastado","Férias","Afastamento Médico","Punição","Reserva"] },
-  { key:"licenca_premium", label:"Licença Premium",       width:"12rem", type:"flag", trueLabel:"ATIVA", falseLabel:"INATIVA" },
-  { key:"ultima_promocao", label:"Última Promoção",       width:"12rem", type:"date" },
-  { key:"turma",           label:"Turma",                 width:"9rem",  type:"text" },
-  { key:"cia",             label:"CIA",                   width:"9rem",  type:"text" },
-  { key:"data_entrada",    label:"Data de Entrada",       width:"12rem", type:"date" },
-  { key:"padrinhos",       label:"Padrinhos",             width:"16rem", type:"text", wrap:true },
-  { key:"pad",             label:"PAD",                   width:"8rem",  type:"text" },
+  { key:"funcao",          label:"Função",                type:"text", multiline:true },
+  { key:"edital",          label:"Edital",                type:"text" },
+  { key:"situacao",        label:"Situação",              type:"select", options:["ATIVO","Afastado","Férias","Afastamento Médico","Punição","Reserva"] },
+  { key:"licenca_premium", label:"Licença Premium",       type:"flag", trueLabel:"ATIVA", falseLabel:"INATIVA" },
+  { key:"ultima_promocao", label:"Última Promoção",       type:"date" },
+  { key:"turma",           label:"Turma",                 type:"text" },
+  { key:"cia",             label:"CIA",                   type:"text" },
+  { key:"data_entrada",    label:"Data de Entrada",       type:"date" },
+  { key:"padrinhos",       label:"Padrinhos",             type:"text", multiline:true },
+  { key:"pad",             label:"PAD",                   type:"text" },
 ];
 
-/* ======== GRADUAÇÃO por Patente (agrupamento automático) ======== */
 const GRAD_ORDER = [
   { label:"Oficiais Superiores",    match: p => /(^CEL\b|TEN\.?CEL|MAJ)/i.test(p) },
   { label:"Oficiais Intermediários",match: p => /\bCAP\b/i.test(p) },
@@ -109,224 +100,316 @@ const GRAD_ORDER = [
   { label:"Praças Graduados",       match: p => /(SUBTEN|SGT|CB|SD)/i.test(p) },
   { label:"Outros",                 match: p => true },
 ];
-function patenteToGraduacao(patente="") {
-  const p = String(patente).toUpperCase();
-  const g = GRAD_ORDER.find(g => g.match(p)) || GRAD_ORDER[GRAD_ORDER.length-1];
-  return g.label;
+function patenteToGraduacao(p=""){
+  const up = String(p||"").toUpperCase();
+  return (GRAD_ORDER.find(g=>g.match(up))||GRAD_ORDER[GRAD_ORDER.length-1]).label;
 }
 
-/* =============== EXEMPLO INICIAL (pode apagar) =============== */
-const INITIAL_ROWS = [
+/* ========= DADOS INICIAIS ========= */
+const INITIAL = [
   { matricula:"2410202230", nome:"Matheus Bezerra", guerra:"Bezerra", patente:"TEN.CEL PM",
     funcao:"COMANDANTE AGUIAR / COMANDANTE SINDICÂNCIA / COMANDANTE CCOMSOC",
     edital:"", situacao:"ATIVO", licenca_premium:true, ultima_promocao:"2024-08-01",
     turma:"", cia:"", data_entrada:"2022-03-01", padrinhos:"-", pad:"0/3" },
-
   { matricula:"1042022255", nome:"Davi Costa", guerra:"Rivotril", patente:"MAJ PM",
     funcao:"SUBCOMANDANTE AGUIAR / SUPERVISOR SINDICÂNCIAS / SUPERVISOR CCOMSOC",
     edital:"", situacao:"ATIVO", licenca_premium:false, ultima_promocao:"2024-06-10",
     turma:"", cia:"", data_entrada:"2022-04-01", padrinhos:"-", pad:"0/3" },
-
   { matricula:"1072023259", nome:"Saléh Matias", guerra:"Tranca Rua", patente:"CAP PM",
     funcao:"COMANDANTE 1ª CIA / COMANDO DECIC / COMANDANTE P1 / COMANDANTE P4",
     edital:"", situacao:"ATIVO", licenca_premium:true, ultima_promocao:"2025-01-12",
     turma:"", cia:"CMT. 1ª CIA", data_entrada:"2023-07-01", padrinhos:"-", pad:"0/3" },
 ];
 
-/* ===================== ESTADO ===================== */
-let ROWS = loadFromLocal() || INITIAL_ROWS.slice();
-const state = { q:"" };
+let ROWS = loadLocal() || INITIAL.slice();
+let selectedIndex = -1;
+const listPane = document.getElementById('listPane');
+const cardPane = document.getElementById('cardPane');
 
-/* ===================== RENDER ===================== */
-const sheetEl = document.getElementById('sheet');
+/* ========= LISTA ========= */
+function renderList(q=""){
+  listPane.innerHTML = "";
+  const normQ = norm(q);
 
-function computeCols(){ sheetEl.style.gridTemplateColumns = COLUMNS.map(c=>c.width||"12rem").join(' '); }
-function renderHeader(){
-  const frag=document.createDocumentFragment();
-  COLUMNS.forEach(col=>{
-    const h=document.createElement('div');
-    h.className="cell head";
-    h.textContent=col.label;
-    frag.appendChild(h);
-  });
-  sheetEl.appendChild(frag);
-}
-
-function flagChip(value, col){
-  const on=!!value;
-  const div=document.createElement('div');
-  div.className=`flag ${on?'true':'false'}`;
-  div.innerHTML=`<span class="dot"></span>${on?(col.trueLabel||'SIM'):(col.falseLabel||'NÃO')}`;
-  return div;
-}
-
-function renderDataRow(row, idx){
-  COLUMNS.forEach(col=>{
-    const cell=document.createElement('div');
-    cell.className="cell row";
-    const val=row[col.key]??"";
-    if(col.type==="flag"){
-      const chip=flagChip(val,col);
-      chip.style.cursor="pointer";
-      chip.addEventListener('click',()=>{ row[col.key]=!row[col.key]; persist(); refresh(); });
-      cell.appendChild(chip);
-    } else if(col.type==="select"){
-      const select=document.createElement('select');
-      select.className="bg-transparent border border-white/10 rounded-md px-2 py-1 text-sm w-full";
-      (col.options||[]).forEach(opt=>{
-        const o=document.createElement('option'); o.textContent=opt; o.value=opt; if(opt===val) o.selected=true; select.appendChild(o);
-      });
-      select.addEventListener('change',e=>{ row[col.key]=e.target.value; persist(); });
-      cell.appendChild(select);
-    } else if(col.type==="date"){
-      const input=document.createElement('input'); input.type="date";
-      input.className="bg-transparent border border-white/10 rounded-md px-2 py-1 text-sm w-full";
-      if(val) input.value=String(val).slice(0,10);
-      input.addEventListener('change',e=>{ row[col.key]=e.target.value; persist(); });
-      cell.appendChild(input);
-    } else {
-      const editable=document.createElement('div');
-      editable.contentEditable="true";
-      editable.className="w-full" + (col.wrap?' wrap':'');
-      editable.textContent=val;
-      editable.addEventListener('blur',()=>{ row[col.key]=editable.textContent.trim(); persist(); });
-      cell.appendChild(editable);
-    }
-    sheetEl.appendChild(cell);
-  });
-}
-
-/* ---------- RENDER BODY: respeita seções personalizadas ---------- */
-function renderBody(){
-  sheetEl.innerHTML=""; renderHeader();
-
-  const q=normalize(state.q);
-  const filtered = ROWS.filter(r=>{
-    if(r.type==="section") return true;
-    if(!q) return true;
-    return COLUMNS.some(col=>normalize(r[col.key]).includes(q));
+  // agrupa por graduação
+  const groups = {};
+  ROWS.forEach((r,i)=>{
+    if (normQ && !COLUMNS.some(c=>norm(r[c.key]).includes(normQ))) return;
+    const g = patenteToGraduacao(r.patente);
+    (groups[g] ||= []).push({r,i});
   });
 
-  const hasCustomSections = filtered.some(r => r.type==="section");
+  GRAD_ORDER.forEach(g=>{
+    const arr = groups[g.label];
+    if(!arr || !arr.length) return;
+    const head = document.createElement('div');
+    head.className = "grad-head";
+    head.textContent = g.label;
+    listPane.appendChild(head);
 
-  if (hasCustomSections) {
-    // Respeita a ordem e as seções criadas pelo usuário
-    filtered.forEach((row, i) => {
-      if (row.type==="section") {
-        const s=document.createElement('div');
-        s.className="section"; s.textContent=row.title || "SEÇÃO";
-        sheetEl.appendChild(s);
-      } else {
-        renderDataRow(row, i);
-      }
+    arr.sort((a,b)=> norm(a.r.nome)<norm(b.r.nome)?-1:1);
+    arr.forEach(({r,i})=>{
+      const item = document.createElement('div');
+      item.className = "item";
+      if(i===selectedIndex) item.classList.add('active');
+      item.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="font-semibold">${r.nome||"-"} <span class="text-xs text-slate-400">(${r.guerra||"-"})</span></div>
+            <div class="text-xs text-slate-400">${r.matricula||"-"} • ${r.patente||"-"}</div>
+          </div>
+          ${r.licenca_premium?'<span class="chip green">Premium</span>':'<span class="chip red">Sem Premium</span>'}
+        </div>
+      `;
+      item.addEventListener('click',()=>{ selectedIndex=i; renderList(q); renderCard(); });
+      listPane.appendChild(item);
     });
-  } else {
-    // Sem seções personalizadas: agrupar automaticamente por graduação
-    const rows = filtered.slice();
+  });
 
-    // ordena: graduação > patente > nome
-    rows.sort((a,b)=>{
-      const ga = GRAD_ORDER.findIndex(g => g.label===patenteToGraduacao(a.patente));
-      const gb = GRAD_ORDER.findIndex(g => g.label===patenteToGraduacao(b.patente));
-      if (ga!==gb) return ga-gb;
-      const pa = normalize(a.patente), pb = normalize(b.patente);
-      if (pa!==pb) return pa<pb?-1:1;
-      const na = normalize(a.nome), nb = normalize(b.nome);
-      return na<nb?-1:na>nb?1:0;
-    });
-
-    let currentGrad=null;
-    rows.forEach((row,i)=>{
-      const grad = patenteToGraduacao(row.patente);
-      if (grad !== currentGrad) {
-        currentGrad = grad;
-        const s=document.createElement('div');
-        s.className="section"; s.textContent=grad;
-        sheetEl.appendChild(s);
-      }
-      renderDataRow(row,i);
-    });
+  if(!listPane.children.length){
+    const empty=document.createElement('div');
+    empty.className="text-slate-400 p-3";
+    empty.textContent="Nenhum registro encontrado.";
+    listPane.appendChild(empty);
   }
 }
 
-function refresh(){ computeCols(); renderBody(); }
-computeCols(); renderBody();
+/* ========= CARTEIRINHA ========= */
+function renderCard(){
+  cardPane.innerHTML = "";
+  if(selectedIndex<0 || !ROWS[selectedIndex]){
+    cardPane.innerHTML = `<div class="text-slate-400">Selecione um policial na lista ao lado…</div>`;
+    return;
+  }
+  const p = ROWS[selectedIndex];
 
-/* ===================== UI ===================== */
-document.getElementById('q').addEventListener('input',e=>{ state.q=e.target.value; renderBody(); });
-document.getElementById('density').addEventListener('change',e=>{
-  const h=parseInt(e.target.value,10);
-  // aplica na próxima render
-  document.querySelectorAll('.cell').forEach(el=>el.style.minHeight=h+'px');
-});
+  const header = document.createElement('div');
+  header.className = "flex items-start gap-4 mb-4";
+  header.innerHTML = `
+    <div class="photo select-none">Foto</div>
+    <div class="flex-1">
+      <div class="text-2xl font-extrabold">${p.nome||"-"} <span class="text-slate-400 text-lg">(${p.guerra||"-"})</span></div>
+      <div class="text-slate-300">${p.patente||"-"} • ${patenteToGraduacao(p.patente)}</div>
+      <div class="mt-2 flex flex-wrap gap-2">
+        ${p.licenca_premium ? `<span class="chip green">Licença Premium ATIVA</span>` : `<span class="chip red">Licença Premium INATIVA</span>`}
+        ${p.situacao?`<span class="chip" style="background:rgba(59,130,246,.18);color:#93c5fd;border-color:rgba(59,130,246,.35)">Situação: ${p.situacao}</span>`:""}
+      </div>
+    </div>
+    <div class="no-print flex flex-col gap-2">
+      <button id="btnEdit" class="btn text-xs">Editar</button>
+      <button id="btnPrint" class="btn text-xs">Imprimir</button>
+      <button id="btnDelete" class="btn text-xs text-red-300">Excluir</button>
+    </div>
+  `;
+  cardPane.appendChild(header);
 
-/* ===================== CONTROLES ===================== */
-document.getElementById('addRow').addEventListener('click',()=>{
-  // cria linha nova "normal", sem virar seção nem "Outros"
-  const base = Object.fromEntries(COLUMNS.map(c=>[c.key,""]));
-  base.patente = "CB PM"; // padrão para não cair em "Outros"
-  ROWS.push(base);
-  persist(); refresh();
-});
+  const grid = document.createElement('div');
+  grid.className = "kv";
+  grid.innerHTML = `
+    ${field("Matrícula","matricula",p.matricula)}
+    ${field("Nome","nome",p.nome)}
+    ${field("Nome de Guerra","guerra",p.guerra)}
+    ${field("Patente","patente",p.patente,true)}
+    ${field("Edital","edital",p.edital)}
+    ${field("Turma","turma",p.turma)}
+    ${field("CIA","cia",p.cia)}
+    ${field("Data de Entrada","data_entrada",p.data_entrada,false,"date")}
+    ${field("Última Promoção","ultima_promocao",p.ultima_promocao,false,"date")}
+    ${flagField("Licença Premium","licenca_premium",p.licenca_premium)}
+    ${field("Situação","situacao",p.situacao,true, "select-situacao")}
+    ${longField("Função","funcao",p.funcao)}
+    ${longField("Padrinhos","padrinhos",p.padrinhos)}
+    ${field("PAD","pad",p.pad)}
+  `;
+  cardPane.appendChild(grid);
 
-document.getElementById('addSection').addEventListener('click',()=>{
-  const title = prompt("Título da seção personalizada:", "NOVA SEÇÃO");
-  const t = (title||"").trim();
-  ROWS.push({ type:"section", title: t || "NOVA SEÇÃO" });
-  persist(); refresh();
-});
+  // Ações
+  document.getElementById('btnPrint').onclick = () => window.print();
+  document.getElementById('btnDelete').onclick = () => {
+    if(confirm("Remover este registro?")){
+      ROWS.splice(selectedIndex,1);
+      selectedIndex = -1; persist(); renderList(qEl.value); renderCard();
+    }
+  };
+  document.getElementById('btnEdit').onclick = () => toggleEdit(true);
 
-document.getElementById('delLast').addEventListener('click',()=>{ ROWS.pop(); persist(); refresh(); });
+  function toggleEdit(on){
+    // transforma todos .value em inputs
+    const nodes = cardPane.querySelectorAll('[data-key]');
+    nodes.forEach(node=>{
+      const key = node.dataset.key;
+      const col = COLUMNS.find(c=>c.key===key);
+      const current = p[key] ?? "";
 
-document.getElementById('saveJson').addEventListener('click',()=>{
-  const blob=new Blob([JSON.stringify(ROWS,null,2)],{type:'application/json;charset=utf-8'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='hierarquia.json'; a.click(); URL.revokeObjectURL(a.href);
-});
-document.getElementById('loadJson').addEventListener('change',e=>{
-  const f=e.target.files[0]; if(!f) return;
-  const r=new FileReader(); r.onload=()=>{ try{ ROWS=JSON.parse(r.result); persist(); refresh(); }catch{ alert('JSON inválido'); } };
-  r.readAsText(f);
-});
+      if(col?.type==="flag"){
+        const btn = document.createElement('button');
+        btn.className = "btn text-xs";
+        btn.textContent = p[key] ? "Desativar Premium" : "Ativar Premium";
+        btn.onclick = ()=>{ p[key]=!p[key]; persist(); renderCard(); };
+        node.replaceChildren(btn);
+        return;
+      }
+      if(col?.type==="select"){
+        const sel = document.createElement('select');
+        sel.className="bg-transparent border border-white/10 rounded-md px-2 py-1 text-sm";
+        (col.options||[]).forEach(opt=>{
+          const o=document.createElement('option'); o.value=opt; o.textContent=opt; if(opt===current) o.selected=true; sel.appendChild(o);
+        });
+        sel.onchange=()=>{ p[key]=sel.value; persist(); };
+        node.replaceChildren(sel);
+        return;
+      }
+      if(col?.type==="date"){
+        const inp=document.createElement('input'); inp.type="date";
+        inp.className="bg-transparent border border-white/10 rounded-md px-2 py-1 text-sm";
+        if(current) inp.value=String(current).slice(0,10);
+        inp.onchange=()=>{ p[key]=inp.value; persist(); };
+        node.replaceChildren(inp);
+        return;
+      }
+      // text / multiline
+      const ed = document.createElement(col?.multiline?'textarea':'input');
+      if(col?.multiline){ ed.rows = 3; }
+      ed.className="bg-transparent border border-white/10 rounded-md px-2 py-1 text-sm w-full";
+      ed.value = current;
+      ed.onblur=()=>{ p[key]=ed.value.trim(); persist(); renderCard(); };
+      node.replaceChildren(ed);
+    });
 
-/* ===== Import/Export CSV ===== */
-function parseCSV(txt){const rows=[];let i=0,f='',row=[],q=false;while(i<txt.length){const c=txt[i];if(q){if(c=='"'){if(txt[i+1]=='"'){f+='"';i++;}else q=false;}else f+=c;}else{if(c=='"')q=true;else if(c==','){row.push(f);f='';}else if(c=='\n'||c=='\r'){if(f.length||row.length){row.push(f);rows.push(row);row=[];f='';}if(c=='\r'&&txt[i+1]=='\n')i++;}else f+=c;}i++;}if(f.length||row.length){row.push(f);rows.push(row);}return rows;}
-document.getElementById('loadCsv').addEventListener('change',e=>{
-  const f=e.target.files[0]; if(!f) return;
-  const r=new FileReader(); r.onload=()=>{
-    const data=parseCSV(r.result); const [hdr,...lines]=data;
-    const map=hdr.map(h=>{const n=normalize(h); return COLUMNS.find(c=>normalize(c.label)===n||normalize(c.key)===n)?.key||null;});
+    // troca botão Editar por Concluir
+    const b = document.getElementById('btnEdit');
+    b.textContent = "Concluir";
+    b.onclick = ()=> renderCard();
+  }
+
+  function field(label,key,value,asSelect=false, mode="text"){
+    // mode: "text" | "date" | "select-situacao"
+    return `
+      <div class="lbl">${label}</div>
+      <div class="value" data-key="${key}">
+        ${mode==="date" ? (value?formatDate(value):"-")
+          : mode==="select-situacao" ? (value||"-")
+          : (value||"-")}
+      </div>
+    `;
+  }
+  function flagField(label,key,value){
+    return `
+      <div class="lbl">${label}</div>
+      <div class="value" data-key="${key}">
+        ${value ? `<span class="chip green">ATIVA</span>` : `<span class="chip red">INATIVA</span>`}
+      </div>
+    `;
+  }
+  function longField(label,key,value){
+    return `
+      <div class="lbl">${label}</div>
+      <div class="value" data-key="${key}">
+        <div class="whitespace-pre-wrap leading-relaxed">${(value||"-")}</div>
+      </div>
+    `;
+  }
+}
+
+/* ========= BUSCA ========= */
+const qEl = document.getElementById('q');
+qEl.addEventListener('input', ()=> renderList(qEl.value));
+
+/* ========= CONTROLES SUPERIORES ========= */
+document.getElementById('btnAdd').onclick = ()=>{
+  const novo = Object.fromEntries(COLUMNS.map(c=>[c.key,""]));
+  novo.patente = "CB PM";
+  ROWS.push(novo);
+  selectedIndex = ROWS.length-1;
+  persist(); renderList(qEl.value); renderCard();
+};
+
+document.getElementById('btnSaveJSON').onclick = ()=>{
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(ROWS,null,2)],{type:'application/json'}));
+  a.download = "policiais.json"; a.click(); URL.revokeObjectURL(a.href);
+};
+
+document.getElementById('inJSON').onchange = (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader(); r.onload = ()=>{
+    try{ ROWS = JSON.parse(r.result); selectedIndex=-1; persist(); renderList(qEl.value); renderCard(); }
+    catch{ alert("JSON inválido"); }
+  }; r.readAsText(f);
+};
+
+document.getElementById('inCSV').onchange = (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader(); r.onload = ()=>{
+    const data = parseCSV(r.result); const [hdr,...lines]=data;
+    const map = hdr.map(h=>{
+      const n = norm(h);
+      return COLUMNS.find(c=>norm(c.label)===n || norm(c.key)===n)?.key || null;
+    });
     const rows=[];
     lines.forEach(cells=>{
       if(cells.every(c=>!String(c||"").trim())) return;
-      const obj={}; map.forEach((k,i)=>{ if(!k) return; const col=COLUMNS.find(c=>c.key===k); let v=cells[i];
-        if(col?.type==='flag'){const nv=normalize(v); obj[k]=(nv==='true'||nv==='verdadeiro'||nv==='sim'||nv==='ativa'||nv==='ok');}
-        else if(col?.type==='date'){const d=new Date(v); obj[k]=isFinite(d)?d.toISOString().slice(0,10):"";}
-        else {obj[k]=v;}
-      }); rows.push(obj);
+      const obj = {};
+      map.forEach((k,i)=>{
+        if(!k) return;
+        const col=COLUMNS.find(c=>c.key===k);
+        let v = cells[i];
+        if(col?.type==='flag'){
+          const nv=norm(v); obj[k]=(nv==='true'||nv==='verdadeiro'||nv==='sim'||nv==='ativa'||nv==='ok');
+        }else if(col?.type==='date'){
+          const d = new Date(v); obj[k]=isFinite(d)?d.toISOString().slice(0,10):"";
+        }else{
+          obj[k]=v;
+        }
+      });
+      rows.push(obj);
     });
-    ROWS=rows; persist(); refresh();
+    ROWS = rows; selectedIndex=-1; persist(); renderList(qEl.value); renderCard();
   }; r.readAsText(f);
-});
-document.getElementById('saveCsv').addEventListener('click',()=>{
-  const rows=[]; rows.push(COLUMNS.map(c=>c.label));
+};
+
+document.getElementById('btnSaveCSV').onclick = ()=>{
+  const rows = [];
+  rows.push(COLUMNS.map(c=>c.label));
   ROWS.forEach(r=>{
-    if(r.type==="section") return; // não exporta as seções personalizadas
-    const arr=COLUMNS.map(col=>{
-      let v=r[col.key]??"";
-      if(col.type==='flag') v=(v?(col.trueLabel||'SIM'):(col.falseLabel||'NÃO'));
+    rows.push(COLUMNS.map(col=>{
+      let v = r[col.key] ?? "";
+      if(col.type==='flag') v = (v ? (col.trueLabel||'SIM') : (col.falseLabel||'NÃO'));
       return v;
-    });
-    rows.push(arr);
+    }));
   });
   const esc=s=>/[",\n]/.test(String(s))?`"${String(s).replace(/"/g,'""')}"`:String(s);
-  const csv=rows.map(r=>r.map(esc).join(",")).join("\n");
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"})); a.download="hierarquia.csv"; a.click(); URL.revokeObjectURL(a.href);
-});
+  const csv = rows.map(r=>r.map(esc).join(",")).join("\n");
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download="policiais.csv"; a.click(); URL.revokeObjectURL(a.href);
+};
 
-/* ===================== UTILS ===================== */
-function normalize(s){return String(s||"").normalize("NFD").replace(/\p{Diacritic}/gu,'').toLowerCase();}
-function persist(){ localStorage.setItem('rp.hierarquia.rows', JSON.stringify(ROWS)); }
-function loadFromLocal(){ try{ return JSON.parse(localStorage.getItem('rp.hierarquia.rows')||'null'); }catch{return null;} }
+/* ========= UTILS ========= */
+function formatDate(v){
+  const s=String(v); const d = new Date(s);
+  if(!isFinite(d)) return s||"-";
+  return d.toISOString().slice(0,10).split("-").reverse().join("/");
+}
+function norm(s){return String(s||"").normalize("NFD").replace(/\p{Diacritic}/gu,'').toLowerCase();}
+function loadLocal(){ try{return JSON.parse(localStorage.getItem('rp.carteirinhas')||'null');}catch{return null;} }
+function persist(){ localStorage.setItem('rp.carteirinhas', JSON.stringify(ROWS)); }
+function parseCSV(txt){
+  const rows=[];let i=0,f='',row=[],q=false;
+  while(i<txt.length){const c=txt[i];
+    if(q){ if(c=='"'){ if(txt[i+1]=='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else{ if(c=='"') q=true; else if(c==','){ row.push(f); f=''; }
+      else if(c=='\n'||c=='\r'){ if(f.length||row.length){ row.push(f); rows.push(row); row=[]; f=''; } if(c=='\r'&&txt[i+1]=='\n') i++; }
+      else f+=c; }
+    i++;
+  }
+  if(f.length||row.length){ row.push(f); rows.push(row); }
+  return rows;
+}
+
+/* ========= start ========= */
+renderList("");
+renderCard();
 </script>
 </body>
 </html>
