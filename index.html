@@ -37,10 +37,17 @@
     .chip.green,.chip.red{border:1px solid #000;color:#000;background:#fff}
   }
 
-  /* --- Drag and Drop highlights --- */
+  /* Drag and Drop highlights */
   .dragging { opacity: .5; }
   .drop-target { outline: 2px dashed #facc15; outline-offset: 2px; }
-  .drop-hint { font-size:.73rem;color:#94a3b8;padding:.35rem .5rem;border-top:1px dashed rgba(250,204,21,.4) }
+
+  /* botão mini no título da seção */
+  .sec-actions button{
+    padding:.25rem .45rem; border-radius:.4rem;
+    border:1px solid rgba(248,113,113,.4); color:#fecaca;
+    background:transparent; font-size:.7rem; font-weight:700;
+  }
+  .sec-actions button:hover{ background:rgba(248,113,113,.15); border-color:rgba(248,113,113,.7); color:#fecaca; }
 </style>
 </head>
 <body class="dark text-slate-100">
@@ -139,28 +146,34 @@ const listPane = document.getElementById('listPane');
 const cardPane = document.getElementById('cardPane');
 const qEl = document.getElementById('q');
 
-/* ========= LISTA ========= */
+/* ========= LISTA (com DnD e excluir seção) ========= */
 let dragIndex = null; // índice do item sendo arrastado
 
 function renderList(q=""){
   listPane.innerHTML = "";
   const normQ = norm(q);
-
   const hasCustomSections = ROWS.some(r=>r.type==="section");
 
   if (hasCustomSections) {
-    // dica de arrastar
-    const hint=document.createElement('div');
-    hint.className="drop-hint";
-    hint.textContent="Dica: arraste um nome e solte em cima de um título de seção para mover.";
-    listPane.appendChild(hint);
-
-    // Respeita a ordem e seções do usuário
     ROWS.forEach((entry, i) => {
       if (entry.type==="section") {
         const head = document.createElement('div');
-        head.className="grad-head";
-        head.textContent = entry.title || "SEÇÃO";
+        head.className="grad-head flex items-center justify-between";
+        head.innerHTML = `
+          <span>${entry.title || "SEÇÃO"}</span>
+          <span class="sec-actions">
+            <button class="btn-sec-del" title="Excluir seção">Excluir</button>
+          </span>
+        `;
+
+        // excluir seção (não remove policiais)
+        head.querySelector('.btn-sec-del').addEventListener('click', (ev)=>{
+          ev.stopPropagation();
+          if(confirm(`Excluir a seção "${entry.title||'SEÇÃO'}"?`)){
+            ROWS.splice(i,1);
+            persist(); renderList(qEl.value);
+          }
+        });
 
         // alvo de drop (soltar aqui move o item logo abaixo deste título)
         head.dataset.sectionIndex = i;
@@ -177,6 +190,7 @@ function renderList(q=""){
         listPane.appendChild(head);
         return;
       }
+
       // filtro
       if (normQ && !COLUMNS.some(c=>norm(entry[c.key]).includes(normQ))) return;
 
@@ -251,18 +265,11 @@ function renderList(q=""){
 // move item após o índice do título de seção
 function moveItemToSection(itemIndex, sectionIndex){
   if(itemIndex===sectionIndex) return;
-
-  // extrai o item
   const [item] = ROWS.splice(itemIndex,1);
-
-  // depois de remover, se o item estava acima do destino, o destino muda -1
   let dest = sectionIndex;
   if(itemIndex < sectionIndex) dest = sectionIndex - 1;
-
-  // encontra o próximo índice depois do título da seção
   const insertAt = dest + 1;
   ROWS.splice(insertAt, 0, item);
-
   persist();
   renderList(qEl.value);
   renderCard();
