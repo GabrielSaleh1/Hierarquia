@@ -1,553 +1,342 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Carteirinhas do Batalhão — RP</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config={darkMode:'class',theme:{extend:{}}}</script>
-<style>
-  html,body{height:100%} body{background:#020617}
-  .panel{display:grid; grid-template-columns: 340px 1fr; gap:1rem;}
-  .scroll{overflow:auto}
-  .card{background:linear-gradient(135deg,#0b1220 0%, #0e172a 100%); border:1px solid rgba(255,255,255,.08)}
-  .grad-head{position:sticky;top:0;z-index:5;background:rgba(2,6,23,.95);backdrop-filter:blur(6px);padding:.4rem .5rem;border-bottom:1px solid rgba(255,255,255,.1);color:#facc15;text-transform:uppercase;font-weight:700}
-  .item{padding:.55rem .65rem;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer}
-  .item:hover{background:rgba(255,255,255,.04)}
-  .item.active{background:rgba(250,204,21,.08);border-left:3px solid #facc15}
-  .lbl{color:#94a3b8}
-  .value{color:#e5e7eb}
-  .kv{display:grid;grid-template-columns: 170px 1fr;gap:.5rem .75rem}
-  .photo{width:104px;height:140px;border-radius:.75rem;background:#0b1220;border:1px solid rgba(255,255,255,.08);display:grid;place-items:center;color:#94a3b8;overflow:hidden;user-select:none}
-  .photo img{width:100%;height:100%;object-fit:cover;display:block}
-  .photo .hint{font-size:.75rem;text-align:center;padding:.25rem .4rem;opacity:.8}
-  .btn{padding:.5rem .75rem;border:1px solid rgba(255,255,255,.12);border-radius:.65rem;background:transparent}
-  .btn:hover{background:rgba(255,255,255,.06)}
-  .chip{display:inline-flex;align-items:center;gap:.5rem;padding:.15rem .55rem;border-radius:999px;font-size:.75rem;font-weight:700;letter-spacing:.2px;border:1px solid transparent}
-  .chip.green{background:rgba(34,197,94,.15);color:rgb(134,239,172);border-color:rgba(34,197,94,.3)}
-  .chip.red{background:rgba(239,68,68,.15);color:rgb(252,165,165);border-color:rgba(239,68,68,.3)}
-  select{background-color:#0d1322!important;color:#e5e7eb!important;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:4px 6px;font-weight:500;appearance:none}
-  select option{background-color:#0d1322!important;color:#e5e7eb!important}
-  select:focus{outline:2px solid #facc15; outline-offset:1px}
-  :root,select,select option{color-scheme:dark}
-  @media (max-width: 900px){ .panel{grid-template-columns:1fr} }
-  @media print{
-    body{background:#fff;color:#000}
-    .no-print{display:none!important}
-    .card{border:1px solid #000;background:#fff}
-    .chip.green,.chip.red{border:1px solid #000;color:#000;background:#fff}
-  }
-  .dragging { opacity: .5; }
-  .drop-target { outline: 2px dashed #facc15; outline-offset: 2px; }
-  .sec-actions button{
-    padding:.25rem .45rem; border-radius:.4rem;
-    border:1px solid rgba(248,113,113,.4); color:#fecaca;
-    background:transparent; font-size:.7rem; font-weight:700;
-  }
-  .sec-actions button:hover{ background:rgba(248,113,113,.15); border-color:rgba(248,113,113,.7); color:#fecaca; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ROTA · Painel Único</title>
+  <meta name="description" content="Painel único para unificar sistemas e documentos do Batalhão (GTA RP Polícia)" />
+  <!-- Segurança básica para impedir que este painel injete/edite algo em outros domínios -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://unpkg.com https://cdn.tailwindcss.com; frame-src https://docs.google.com https://gabrielsaleh1.github.io; connect-src 'self' https://gabrielsaleh1.github.io https://unpkg.com https://cdn.tailwindcss.com; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; script-src 'self' https://unpkg.com https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval';">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: {} } }
+  </script>
+  <style>
+    html, body, #root { height: 100%; }
+    body { background: #020617; } /* slate-950 */
+  </style>
 </head>
-<body class="dark text-slate-100">
-<div class="max-w-7xl mx-auto px-4 py-6">
-  <header class="mb-4 flex items-center gap-3 no-print">
-    <div class="h-10 w-10 rounded-lg grid place-items-center font-black border border-amber-500/40 bg-slate-900/60">R</div>
-    <div>
-      <h1 class="text-xl font-bold">Carteirinhas do Batalhão — RP</h1>
-      <p class="text-sm text-slate-400">Selecione um policial à esquerda para ver a carteirinha</p>
-    </div>
-    <div class="ml-auto flex flex-wrap items-center gap-2">
-      <input id="q" class="w-64 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60" placeholder="Buscar por nome, matrícula, patente..." />
-      <button id="btnAdd" class="btn text-xs">+ Adicionar</button>
-      <button id="btnAddSection" class="btn text-xs">+ Seção</button>
-      <button id="btnSaveJSON" class="btn text-xs">Baixar JSON</button>
-      <label class="btn text-xs cursor-pointer">Carregar JSON<input id="inJSON" type="file" accept="application/json" class="hidden"></label>
-      <label class="btn text-xs cursor-pointer">Importar CSV<input id="inCSV" type="file" accept=".csv,text/csv" class="hidden"></label>
-      <button id="btnSaveCSV" class="btn text-xs">Baixar CSV</button>
-    </div>
-  </header>
+<body class="dark">
+  <div id="root"></div>
 
-  <div class="panel">
-    <aside class="rounded-2xl border border-white/10 bg-slate-900/40 shadow-xl scroll" id="listPane" style="max-height: calc(100vh - 160px)"></aside>
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <main class="card rounded-2xl p-5 shadow-xl border" id="cardPane">
-      <div class="text-slate-400">Selecione um policial na lista ao lado…</div>
-    </main>
-  </div>
-</div>
+  <script type="text/babel">
+    const { useMemo, useState, useEffect } = React;
 
-<script>
-/* ========= CAMPOS ========= */
-const COLUMNS = [
-  { key:"matricula",       label:"Matrícula",             type:"text" },
-  { key:"nome",            label:"Nome",                  type:"text" },
-  { key:"guerra",          label:"Nome de Guerra",        type:"text" },
-  { key:"patente",         label:"Patente",               type:"select", options:[
-      "CEL PM","TEN.CEL PM","MAJ PM","CAP PM","1º TEN PM","2º TEN PM","ASP OF PM",
-      "SUBTEN PM","1º SGT PM","2º SGT PM","3º SGT PM","CB PM","SD PM","ALUNO"
-    ]},
-  { key:"funcao",          label:"Função",                type:"text", multiline:true },
-  { key:"edital",          label:"Edital",                type:"text" },
-  { key:"situacao",        label:"Situação",              type:"select", options:["ATIVO","Afastado","Férias","Afastamento Médico","Punição","Reserva"] },
-  { key:"licenca_premium", label:"Licença Premium",       type:"flag", trueLabel:"ATIVA", falseLabel:"INATIVA" },
-  { key:"ultima_promocao", label:"Última Promoção",       type:"date" },
-  { key:"turma",           label:"Turma",                 type:"text" },
-  { key:"cia",             label:"CIA",                   type:"text" },
-  { key:"data_entrada",    label:"Data de Entrada",       type:"date" },
-  { key:"padrinhos",       label:"Padrinhos",             type:"text", multiline:true },
-  { key:"pad",             label:"PAD",                   type:"text" },
-  { key:"foto",            label:"Foto",                  type:"image" }, // novo campo
-];
+    // ----------------- URLs E CONFIG -----------------
+    const RAW_LINKS = {
+      // Sistemas
+      ponto: "https://gabrielsaleh1.github.io/Ponto-Online",
+      rso: "https://gabrielsaleh1.github.io/RSO-Online",
 
-/* ========= ORDENAÇÃO DE PATENTES ========= */
-const RANK_WEIGHT = {
-  "CEL PM":100, "TEN.CEL PM":90, "MAJ PM":80, "CAP PM":70,
-  "1º TEN PM":60, "2º TEN PM":50, "ASP OF PM":40,
-  "SUBTEN PM":35, "1º SGT PM":34, "2º SGT PM":33, "3º SGT PM":32,
-  "CB PM":20, "SD PM":10, "ALUNO":1
-};
-const GRAD_ORDER = [
-  { label:"Oficiais Superiores",    match: p => /(^CEL\b|TEN\.?CEL|MAJ)/i.test(p) },
-  { label:"Oficiais Intermediários",match: p => /\bCAP\b/i.test(p) },
-  { label:"Oficiais Subalternos",   match: p => /(1º\s*TEN|2º\s*TEN|ASP)/i.test(p) },
-  { label:"Praças Graduados",       match: p => /(SUBTEN|SGT|CB|SD)/i.test(p) },
-  { label:"Outros",                 match: p => true },
-];
-function patenteToGraduacao(p=""){
-  const up = String(p||"").toUpperCase();
-  return (GRAD_ORDER.find(g=>g.match(up))||GRAD_ORDER[GRAD_ORDER.length-1]).label;
-}
-const rankVal = p => RANK_WEIGHT[p?.toUpperCase?.()] ?? 0;
+      // Hierarquia (somente visualização)
+      hierarquiaPublicView: "https://gabrielsaleh1.github.io/Hierarquia",
+      // Fonte de dados SOMENTE-LEITURA da hierarquia (JSON público hospedado no site original).
+      // 👉 Ajuste a URL abaixo para o endpoint de dados real do seu projeto (ex.: /Hierarquia/data.json ou /api/hierarquia.json)
+      hierarquiaData: "https://gabrielsaleh1.github.io/Hierarquia/data.json",
 
-/* ========= DADOS INICIAIS ========= */
-const INITIAL = [
-  { matricula:"2410202230", nome:"Matheus Bezerra", guerra:"Bezerra", patente:"TEN.CEL PM",
-    funcao:"COMANDANTE AGUIAR / COMANDANTE SINDICÂNCIA / COMANDANTE CCOMSOC",
-    edital:"", situacao:"ATIVO", licenca_premium:true, ultima_promocao:"2024-08-01",
-    turma:"", cia:"", data_entrada:"2022-03-01", padrinhos:"-", pad:"0/3", foto:"" },
-  { matricula:"1042022255", nome:"Davi Costa", guerra:"Rivotril", patente:"MAJ PM",
-    funcao:"SUBCOMANDANTE AGUIAR / SUPERVISOR SINDICÂNCIAS / SUPERVISOR CCOMSOC",
-    edital:"", situacao:"ATIVO", licenca_premium:false, ultima_promocao:"2024-06-10",
-    turma:"", cia:"", data_entrada:"2022-04-01", padrinhos:"-", pad:"0/3", foto:"" },
-  { matricula:"1072023259", nome:"Saléh Matias", guerra:"Tranca Rua", patente:"CAP PM",
-    funcao:"COMANDANTE 1ª CIA / COMANDO DECIC / COMANDANTE P1 / COMANDANTE P4",
-    edital:"", situacao:"ATIVO", licenca_premium:true, ultima_promocao:"2025-01-12",
-    turma:"", cia:"CMT. 1ª CIA", data_entrada:"2023-07-01", padrinhos:"-", pad:"0/3", foto:"" },
-];
-
-let ROWS = loadLocal() || INITIAL.slice();
-let selectedIndex = -1;
-const listPane = document.getElementById('listPane');
-const cardPane = document.getElementById('cardPane');
-const qEl = document.getElementById('q');
-
-/* ========= LISTA (com DnD e excluir seção) ========= */
-let dragIndex = null;
-
-function renderList(q=""){
-  listPane.innerHTML = "";
-  const normQ = norm(q);
-  const hasCustomSections = ROWS.some(r=>r.type==="section");
-
-  if (hasCustomSections) {
-    ROWS.forEach((entry, i) => {
-      if (entry.type==="section") {
-        const head = document.createElement('div');
-        head.className="grad-head flex items-center justify-between";
-        head.innerHTML = `
-          <span>${entry.title || "SEÇÃO"}</span>
-          <span class="sec-actions">
-            <button class="btn-sec-del" title="Excluir seção">Excluir</button>
-          </span>
-        `;
-        head.querySelector('.btn-sec-del').addEventListener('click', (ev)=>{
-          ev.stopPropagation();
-          if(confirm(`Excluir a seção "${entry.title||'SEÇÃO'}"?`)){
-            ROWS.splice(i,1); persist(); renderList(qEl.value);
-          }
-        });
-        head.dataset.sectionIndex = i;
-        head.addEventListener('dragover', e => { e.preventDefault(); head.classList.add('drop-target'); });
-        head.addEventListener('dragleave', () => head.classList.remove('drop-target'));
-        head.addEventListener('drop', e => {
-          e.preventDefault();
-          head.classList.remove('drop-target');
-          if (dragIndex===null) return;
-          moveItemToSection(dragIndex, i); dragIndex=null;
-        });
-        listPane.appendChild(head);
-        return;
-      }
-      if (normQ && !COLUMNS.some(c=>norm(entry[c.key]).includes(normQ))) return;
-      const item = document.createElement('div');
-      item.className = "item";
-      if(i===selectedIndex) item.classList.add('active');
-      item.draggable = true;
-      item.addEventListener('dragstart', () => { dragIndex = i; item.classList.add('dragging'); });
-      item.addEventListener('dragend',   () => { item.classList.remove('dragging'); dragIndex = null; });
-      item.innerHTML = `
-        <div class="font-semibold">${entry.nome||"-"} <span class="text-xs text-slate-400">(${entry.guerra||"-"})</span></div>
-        <div class="text-xs text-slate-400">${entry.matricula||"-"} • ${entry.patente||"-"}</div>
-      `;
-      item.addEventListener('click',()=>{ selectedIndex=i; renderList(qEl.value); renderCard(); });
-      listPane.appendChild(item);
-    });
-    if(!listPane.children.length){
-      const none=document.createElement('div');
-      none.className="text-slate-400 p-3"; none.textContent="Nenhum registro na seção.";
-      listPane.appendChild(none);
-    }
-    return;
-  }
-
-  // Agrupamento automático
-  const groups = {};
-  ROWS.forEach((r,i)=>{
-    if (r.type==="section") return;
-    if (normQ && !COLUMNS.some(c=>norm(r[c.key]).includes(normQ))) return;
-    const g = patenteToGraduacao(r.patente);
-    (groups[g] ||= []).push({r,i});
-  });
-
-  GRAD_ORDER.forEach(g=>{
-    const arr = groups[g.label];
-    if(!arr || !arr.length) return;
-    const head = document.createElement('div');
-    head.className = "grad-head";
-    head.textContent = g.label;
-    listPane.appendChild(head);
-
-    arr.sort((a,b)=>{
-      const rw = rankVal(b.r.patente) - rankVal(a.r.patente);
-      if (rw!==0) return rw;
-      return norm(a.r.nome) < norm(b.r.nome) ? -1 : 1;
-    });
-
-    arr.forEach(({r,i})=>{
-      const item = document.createElement('div');
-      item.className = "item";
-      if(i===selectedIndex) item.classList.add('active');
-      item.innerHTML = `
-        <div class="font-semibold">${r.nome||"-"} <span class="text-xs text-slate-400">(${r.guerra||"-"})</span></div>
-        <div class="text-xs text-slate-400">${r.matricula||"-"} • ${r.patente||"-"}</div>
-      `;
-      item.addEventListener('click',()=>{ selectedIndex=i; renderList(qEl.value); renderCard(); });
-      listPane.appendChild(item);
-    });
-  });
-
-  if(!listPane.children.length){
-    const empty=document.createElement('div');
-    empty.className="text-slate-400 p-3";
-    empty.textContent="Nenhum registro encontrado.";
-    listPane.appendChild(empty);
-  }
-}
-
-function moveItemToSection(itemIndex, sectionIndex){
-  if(itemIndex===sectionIndex) return;
-  const [item] = ROWS.splice(itemIndex,1);
-  let dest = sectionIndex;
-  if(itemIndex < sectionIndex) dest = sectionIndex - 1;
-  const insertAt = dest + 1;
-  ROWS.splice(insertAt, 0, item);
-  persist(); renderList(qEl.value); renderCard();
-}
-
-/* ========= CARTEIRINHA + FOTO ========= */
-function renderCard(){
-  cardPane.innerHTML = "";
-  if(selectedIndex<0 || !ROWS[selectedIndex] || ROWS[selectedIndex].type==="section"){
-    cardPane.innerHTML = `<div class="text-slate-400">Selecione um policial na lista ao lado…</div>`;
-    return;
-  }
-  const p = ROWS[selectedIndex];
-
-  const header = document.createElement('div');
-  header.className = "flex items-start gap-4 mb-4";
-  header.innerHTML = `
-    <div class="photo select-none" id="photoBox">
-      ${p.foto ? `<img src="${p.foto}" alt="Foto">` : `<div class="hint">Foto<br>clique/arraste/Ctrl+V</div>`}
-    </div>
-    <div class="flex-1">
-      <div class="text-2xl font-extrabold">${p.nome||"-"} <span class="text-slate-400 text-lg">(${p.guerra||"-"})</span></div>
-      <div class="text-slate-300">${p.patente||"-"} • ${patenteToGraduacao(p.patente)}</div>
-      <div class="mt-2 flex flex-wrap gap-2">
-        ${p.licenca_premium ? `<span class="chip green">Licença Premium ATIVA</span>` : `<span class="chip red">Licença Premium INATIVA</span>`}
-        ${p.situacao?`<span class="chip" style="background:rgba(59,130,246,.18);color:#93c5fd;border-color:rgba(59,130,246,.35)">Situação: ${p.situacao}</span>`:""}
-      </div>
-    </div>
-    <div class="no-print flex flex-col gap-2">
-      <button id="btnEdit" class="btn text-xs">Editar</button>
-      <button id="btnPrint" class="btn text-xs">Imprimir</button>
-      <button id="btnDelete" class="btn text-xs text-red-300">Excluir</button>
-    </div>
-  `;
-  cardPane.appendChild(header);
-
-  // Handlers da foto: click/upload, drag&drop, paste
-  const photoBox = header.querySelector('#photoBox');
-  photoBox.addEventListener('click', ()=> openImagePicker(setPhotoFromFile));
-  photoBox.addEventListener('dragover', (e)=>{ e.preventDefault(); photoBox.style.outline='2px dashed #facc15'; });
-  photoBox.addEventListener('dragleave', ()=>{ photoBox.style.outline='none'; });
-  photoBox.addEventListener('drop', (e)=>{
-    e.preventDefault(); photoBox.style.outline='none';
-    const f = [...e.dataTransfer.files||[]].find(f=>f.type.startsWith('image/'));
-    if(f) setPhotoFromFile(f);
-  });
-  // paste (Ctrl+V) na carta inteira
-  cardPane.onpaste = (e)=>{
-    const item = [...e.clipboardData.items].find(i=>i.type.startsWith('image/'));
-    if(item){ setPhotoFromFile(item.getAsFile()); }
-  };
-
-  const grid = document.createElement('div');
-  grid.className = "kv";
-  grid.innerHTML = `
-    ${field("Matrícula","matricula",p.matricula)}
-    ${field("Nome","nome",p.nome)}
-    ${field("Nome de Guerra","guerra",p.guerra)}
-    ${field("Patente","patente",p.patente,true)}
-    ${field("Edital","edital",p.edital)}
-    ${field("Turma","turma",p.turma)}
-    ${field("CIA","cia",p.cia)}
-    ${field("Data de Entrada","data_entrada",p.data_entrada,false,"date")}
-    ${field("Última Promoção","ultima_promocao",p.ultima_promocao,false,"date")}
-    ${flagField("Licença Premium","licenca_premium",p.licenca_premium)}
-    ${field("Situação","situacao",p.situacao,true, "select-situacao")}
-    ${longField("Função","funcao",p.funcao)}
-    ${longField("Padrinhos","padrinhos",p.padrinhos)}
-    ${field("PAD","pad",p.pad)}
-  `;
-  cardPane.appendChild(grid);
-
-  document.getElementById('btnPrint').onclick = () => window.print();
-  document.getElementById('btnDelete').onclick = () => {
-    if(confirm("Remover este registro?")){
-      ROWS.splice(selectedIndex,1);
-      selectedIndex = -1; persist(); renderList(qEl.value); renderCard();
-    }
-  };
-  document.getElementById('btnEdit').onclick = () => toggleEdit(true);
-
-  function toggleEdit(on){
-    const nodes = cardPane.querySelectorAll('[data-key]');
-    nodes.forEach(node=>{
-      const key = node.dataset.key;
-      const col = COLUMNS.find(c=>c.key===key);
-      const current = p[key] ?? "";
-
-      if(col?.type==="flag"){
-        const btn = document.createElement('button');
-        btn.className = "btn text-xs";
-        btn.textContent = p[key] ? "Desativar Premium" : "Ativar Premium";
-        btn.onclick = ()=>{ p[key]=!p[key]; persist(); renderCard(); };
-        node.replaceChildren(btn);
-        return;
-      }
-      if(col?.type==="select"){
-        const sel = document.createElement('select');
-        sel.className="bg-transparent border border-white/10 rounded-md px-2 py-1 text-sm";
-        (col.options||[]).forEach(opt=>{
-          const o=document.createElement('option'); o.value=opt; o.textContent=opt; if(opt===current) o.selected=true; sel.appendChild(o);
-        });
-        sel.onchange=()=>{ p[key]=sel.value; persist(); };
-        node.replaceChildren(sel);
-        return;
-      }
-      if(col?.type==="date"){
-        const inp=document.createElement('input'); inp.type="date";
-        inp.className="bg-transparent border border-white/10 rounded-md px-2 py-1 text-sm";
-        if(current) inp.value=String(current).slice(0,10);
-        inp.onchange=()=>{ p[key]=inp.value; persist(); };
-        node.replaceChildren(inp);
-        return;
-      }
-      const ed = document.createElement(col?.multiline?'textarea':'input');
-      if(col?.multiline){ ed.rows = 3; }
-      ed.className="bg-transparent border border-white/10 rounded-md px-2 py-1 text-sm w-full";
-      ed.value = current;
-      ed.onblur=()=>{ p[key]=ed.value.trim(); persist(); renderCard(); };
-      node.replaceChildren(ed);
-    });
-
-    // Controles de foto em modo edição
-    const tools = document.createElement('div');
-    tools.className="no-print flex gap-2 mt-2";
-    tools.innerHTML = `
-      <button class="btn text-xs" id="btnChangePhoto">Trocar foto</button>
-      ${p.foto ? `<button class="btn text-xs" id="btnRemovePhoto">Remover</button>` : ``}
-    `;
-    header.appendChild(tools);
-    tools.querySelector('#btnChangePhoto').onclick = ()=> openImagePicker(setPhotoFromFile);
-    const rm = tools.querySelector('#btnRemovePhoto');
-    if(rm) rm.onclick = ()=>{ p.foto=""; persist(); renderCard(); };
-
-    const b = document.getElementById('btnEdit');
-    b.textContent = "Concluir";
-    b.onclick = ()=> renderCard();
-  }
-
-  function field(label,key,value,asSelect=false, mode="text"){
-    return `
-      <div class="lbl">${label}</div>
-      <div class="value" data-key="${key}">
-        ${mode==="date" ? (value?formatDate(value):"-")
-          : mode==="select-situacao" ? (value||"-")
-          : (value||"-")}
-      </div>
-    `;
-  }
-  function flagField(label,key,value){
-    return `
-      <div class="lbl">${label}</div>
-      <div class="value" data-key="${key}">
-        ${value ? `<span class="chip green">ATIVA</span>` : `<span class="chip red">INATIVA</span>`}
-      </div>
-    `;
-  }
-  function longField(label,key,value){
-    return `
-      <div class="lbl">${label}</div>
-      <div class="value" data-key="${key}">
-        <div class="whitespace-pre-wrap leading-relaxed">${(value||"-")}</div>
-      </div>
-    `;
-  }
-
-  /* helpers de foto */
-  function openImagePicker(cb){
-    const input = document.createElement('input');
-    input.type='file'; input.accept='image/*';
-    input.onchange = ()=>{ const f=input.files?.[0]; if(f) cb(f); };
-    input.click();
-  }
-  function setPhotoFromFile(file){
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = async ()=> {
-      const resized = await resizeDataURL(reader.result, 420); // largura máx 420px
-      p.foto = resized; persist(); renderCard();
+      // Documentos do Batalhão
+      fardamentos: "docs.google.com/spreadsheets/u/1/d/15q-JK8zUxIMMAAp_ssNFRrNsddTfGIJHVP241RUw3J4/edit?usp=sharing",
+      doutrinas: "https://docs.google.com/document/d/1LwrV0gPkA0QCRinGGXtQF0bsaWri-rQZOdPiVmCPVus/edit?usp=sharing",
+      secoes: "https://docs.google.com/spreadsheets/d/1Rw6o7O1rAjVC4XCDFwe6L0vInKSQsBvYZsWm6Rb1pfE/edit?gid=0#gid=0",
+      crimes: "https://docs.google.com/document/d/1iGnC80f9COCirKVGHYm5Nr9xSr6hodYHCDl3IAXZvoY/edit?tab=t.0",
     };
-    reader.readAsDataURL(file);
-  }
-}
 
-/* ========= BUSCA ========= */
-qEl.addEventListener('input', ()=> renderList(qEl.value));
-
-/* ========= CONTROLES ========= */
-document.getElementById('btnAdd').onclick = ()=>{
-  const novo = Object.fromEntries(COLUMNS.map(c=>[c.key,""]));
-  novo.patente = "CB PM";
-  ROWS.push(novo);
-  selectedIndex = ROWS.length-1;
-  persist(); renderList(qEl.value); renderCard();
-};
-document.getElementById('btnAddSection').onclick = ()=>{
-  const t = prompt("Título da seção:", "NOVA SEÇÃO");
-  ROWS.push({ type:"section", title: (t||"NOVA SEÇÃO").trim() });
-  persist(); renderList(qEl.value);
-};
-document.getElementById('btnSaveJSON').onclick = ()=>{
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(ROWS,null,2)],{type:'application/json'}));
-  a.download = "policiais.json"; a.click(); URL.revokeObjectURL(a.href);
-};
-document.getElementById('inJSON').onchange = (e)=>{
-  const f = e.target.files[0]; if(!f) return;
-  const r = new FileReader(); r.onload = ()=>{
-    try{ ROWS = JSON.parse(r.result); selectedIndex=-1; persist(); renderList(qEl.value); renderCard(); }
-    catch{ alert("JSON inválido"); }
-  }; r.readAsText(f);
-};
-document.getElementById('inCSV').onchange = (e)=>{
-  const f = e.target.files[0]; if(!f) return;
-  const r = new FileReader(); r.onload = ()=>{
-    const data = parseCSV(r.result); const [hdr,...lines]=data;
-    const map = hdr.map(h=>{
-      const n = norm(h);
-      return COLUMNS.find(c=>norm(c.label)===n || norm(c.key)===n)?.key || null;
-    });
-    const rows=[];
-    lines.forEach(cells=>{
-      if(cells.every(c=>!String(c||"").trim())) return;
-      const obj = {};
-      map.forEach((k,i)=>{
-        if(!k) return;
-        const col=COLUMNS.find(c=>c.key===k);
-        let v = cells[i];
-        if(col?.type==='flag'){
-          const nv=norm(v); obj[k]=(nv==='true'||nv==='verdadeiro'||nv==='sim'||nv==='ativa'||nv==='ok');
-        }else if(col?.type==='date'){
-          const d = new Date(v); obj[k]=isFinite(d)?d.toISOString().slice(0,10):"";
-        }else{
-          obj[k]=v;
+    // Converte links do Google Docs/Sheets para /preview (melhor para iframe)
+    function toEmbedUrl(url) {
+      if (!url) return url;
+      if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+      try {
+        const u = new URL(url);
+        if (u.hostname !== "docs.google.com") return url;
+        const parts = u.pathname.split("/").filter(Boolean);
+        const type = parts[0]; // "document" | "spreadsheets" | ...
+        const idIndex = parts.findIndex(p => p === "d");
+        const fileId = idIndex >= 0 ? parts[idIndex + 1] : null;
+        if (fileId) {
+          const frag = u.hash || "";
+          return `https://docs.google.com/${type}/d/${fileId}/preview${frag}`;
         }
-      });
-      rows.push(obj);
-    });
-    ROWS = rows; selectedIndex=-1; persist(); renderList(qEl.value); renderCard();
-  }; r.readAsText(f);
-};
-document.getElementById('btnSaveCSV').onclick = ()=>{
-  const rows = [];
-  rows.push(COLUMNS.map(c=>c.label));
-  ROWS.forEach(r=>{
-    if(r.type==="section") return; // não exporta seções
-    rows.push(COLUMNS.map(col=>{
-      if(col.key==='foto') return ""; // CSV não leva imagem
-      let v = r[col.key] ?? "";
-      if(col.type==='flag') v = (v ? (col.trueLabel||'SIM') : (col.falseLabel||'NÃO'));
-      return v;
-    }));
-  });
-  const esc=s=>/[",\n]/.test(String(s))?`"${String(s).replace(/"/g,'""')}"`:String(s);
-  const csv = rows.map(r=>r.map(esc).join(",")).join("\n");
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
-  a.download="policiais.csv"; a.click(); URL.revokeObjectURL(a.href);
-};
+      } catch(e) {}
+      return url;
+    }
 
-/* ========= UTILS ========= */
-function formatDate(v){
-  const s=String(v); const d = new Date(s);
-  if(!isFinite(d)) return s||"-";
-  return d.toISOString().slice(0,10).split("-").reverse().join("/");
-}
-function norm(s){return String(s||"").normalize("NFD").replace(/\p{Diacritic}/gu,'').toLowerCase();}
-function loadLocal(){ try{return JSON.parse(localStorage.getItem('rp.carteirinhas')||'null');}catch{return null;} }
-function persist(){ localStorage.setItem('rp.carteirinhas', JSON.stringify(ROWS)); }
-function parseCSV(txt){
-  const rows=[];let i=0,f='',row=[],q=false;
-  while(i<txt.length){const c=txt[i];
-    if(q){ if(c=='"'){ if(txt[i+1]=='"'){f+='"';i++;} else q=false; } else f+=c; }
-    else{ if(c=='"') q=true; else if(c==','){ row.push(f); f=''; }
-      else if(c=='\n'||c=='\r'){ if(f.length||row.length){ row.push(f); rows.push(row); row=[]; f=''; } if(c=='\r'&&txt[i+1]=='\n') i++; }
-      else f+=c; }
-    i++;
-  }
-  if(f.length||row.length){ row.push(f); rows.push(row); }
-  return rows;
-}
+    // ----------------- SOMENTE LEITURA: HIERARQUIA -----------------
+    // Este componente carrega dados públicos (GET) do site original e só permite visualizar.
+    // Nenhuma rota de escrita (POST/PUT/DELETE) é chamada aqui.
+    function HierarquiaViewer({ dataUrl }) {
+      const { useMemo, useState, useEffect } = React;
+      const [people, setPeople] = React.useState([]);
+      const [query, setQuery] = React.useState("");
+      const [selectedId, setSelectedId] = React.useState(null);
+      const [error, setError] = React.useState(null);
+      const [loading, setLoading] = React.useState(true);
 
-/* redimensiona base64 para largura máx; mantém proporção */
-function resizeDataURL(dataUrl, maxW=420){
-  return new Promise(resolve=>{
-    const img=new Image();
-    img.onload=()=>{
-      const scale = Math.min(1, maxW / img.width);
-      const w = Math.round(img.width*scale), h = Math.round(img.height*scale);
-      const c=document.createElement('canvas'); c.width=w; c.height=h;
-      const ctx=c.getContext('2d'); ctx.drawImage(img,0,0,w,h);
-      resolve(c.toDataURL('image/jpeg', 0.9));
+      React.useEffect(() => {
+        let cancel = false;
+        setLoading(true);
+        setError(null);
+        fetch(dataUrl, { method: 'GET', mode: 'cors', credentials: 'omit' })
+          .then(async (r) => {
+            if (!r.ok) throw new Error(`Falha ao carregar dados (${r.status})`);
+            return r.json();
+          })
+          .then((json) => {
+            if (cancel) return;
+            const arr = Array.isArray(json) ? json : (json?.pessoas || json?.members || []);
+            setPeople(Array.isArray(arr) ? arr : []);
+            setLoading(false);
+          })
+          .catch((e) => { if (!cancel) { setError(e.message); setLoading(false); } });
+        return () => { cancel = true; };
+      }, [dataUrl]);
+
+      const filtered = React.useMemo(() => {
+        const q = query.trim().toLowerCase();
+        if (!q) return people;
+        return people.filter(p => [p.nome, p.name, p.patente, p.rank, p.setor, p.sector, p.matricula, p.id]
+          .filter(Boolean)
+          .some(v => String(v).toLowerCase().includes(q)));
+      }, [people, query]);
+
+      const active = React.useMemo(() => {
+        if (!selectedId && filtered.length) return filtered[0];
+        return filtered.find(p => String(p.id) === String(selectedId));
+      }, [filtered, selectedId]);
+
+      return (
+        <div className="space-y-4">
+          {/* Barra de busca e seletor */}
+          <div className="rounded-xl border border-white/10 p-3 bg-slate-900/40 backdrop-blur">
+            <div className="flex flex-col md:flex-row gap-3">
+              <input
+                type="text"
+                placeholder="Buscar por nome, patente, setor..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-white/10 outline-none"
+              />
+              <select
+                className="md:w-80 px-3 py-2 rounded-lg bg-slate-950 border border-white/10"
+                value={selectedId || ''}
+                onChange={(e) => setSelectedId(e.target.value)}
+              >
+                {filtered.map(p => (
+                  <option key={p.id ?? p.nome} value={p.id ?? p.nome}>
+                    {(p.patente || p.rank ? `[${p.patente || p.rank}] ` : '')}{p.nome || p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Estados de carregamento/erro */}
+          {loading ? (
+            <div className="px-3 py-2 rounded-xl border border-white/10 bg-slate-900/60 text-sm text-slate-400">Carregando hierarquia…</div>
+          ) : error ? (
+            <div className="space-y-3">
+              <div className="px-3 py-2 rounded-xl border border-amber-400/30 bg-amber-500/10 text-amber-200 text-sm">
+                {error}. Tentei carregar um JSON público em <code>{dataUrl}</code>.
+              </div>
+              <div className="rounded-xl border border-white/10 overflow-hidden">
+                <iframe
+                  title="hierarquia-fallback"
+                  src={RAW_LINKS.hierarquiaPublicView}
+                  className="w-full h-[60vh] bg-slate-950"
+                  referrerPolicy="no-referrer"
+                  sandbox={'allow-scripts allow-downloads'}
+                ></iframe>
+              </div>
+            </div>
+          ) : active ? (
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="md:col-span-1 rounded-xl border border-white/10 p-4 bg-slate-900/40">
+                <div className="text-xs uppercase tracking-widest text-slate-400">Selecionado</div>
+                <div className="text-lg font-bold">{active.nome || active.name}</div>
+                <div className="text-slate-300">{active.patente || active.rank || 'Sem patente'}</div>
+                {active.matricula && <div className="text-slate-400 text-sm">Matrícula: {active.matricula}</div>}
+                {active.setor && <div className="text-slate-400 text-sm">Setor: {active.setor}</div>}
+              </div>
+              <div className="md:col-span-2 rounded-xl border border-white/10 p-4 bg-slate-900/40 space-y-2">
+                <div className="text-xs uppercase tracking-widest text-slate-400">Informações</div>
+                <table className="w-full text-sm">
+                  <tbody className="[&_tr]:border-b [&_tr]:border-white/10">
+                    {Object.entries(active).map(([k, v]) => (
+                      <tr key={k}>
+                        <td className="py-2 pr-3 text-slate-400 whitespace-nowrap">{k}</td>
+                        <td className="py-2 text-slate-100 break-words">{String(v)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="text-xs text-slate-500">Somente leitura — alterações só podem ser feitas pelo site original.</div>
+              </div>
+            </div>
+          ) : (
+            <div className="px-3 py-2 rounded-xl border border-white/10 bg-slate-900/60 text-sm text-slate-400">Sem registros.</div>
+          )}
+        </div>
+      );
+    }
+
+    // Itens da interface
+    const CONFIG = {
+      brand: { name: "ROTA · Painel Único", badge: "GTA RP" },
+      sections: [
+        {
+          label: "Sistemas",
+          items: [
+            { id: "ponto", name: "Bate-Ponto", url: RAW_LINKS.ponto, icon: "⏱️", sandbox: null },
+            { id: "rso", name: "RSO Online", url: RAW_LINKS.rso, icon: "📋", sandbox: null },
+          ],
+        },
+        {
+          label: "Documentos do Batalhão",
+          items: [
+            // Hierarquia agora é um VISUALIZADOR local somente-leitura (sem iframe editável)
+            { id: "hierarquia", name: "Hierarquia do Batalhão (Somente leitura)", type: 'hierarquia' , icon: "🏛️" },
+            { id: "fardamentos", name: "Fardamentos do Batalhão", url: RAW_LINKS.fardamentos, icon: "🎽", sandbox: null },
+            { id: "doutrinas", name: "Doutrinas e Regimento Interno", url: RAW_LINKS.doutrinas, icon: "📜", sandbox: null },
+            { id: "secoes", name: "Seções Internas do Batalhão", url: RAW_LINKS.secoes, icon: "🗂️", sandbox: null },
+            { id: "crimes", name: "Crimes Militares", url: RAW_LINKS.crimes, icon: "⚖️", sandbox: null },
+          ],
+        },
+      ],
     };
-    img.src=dataUrl;
-  });
-}
 
-/* ========= start ========= */
-renderList("");
-renderCard();
-</script>
+    // ----------------- COMPONENTES -----------------
+    function Sidebar({ sections, activeId, onSelect }) {
+      return (
+        <aside className="w-80 shrink-0 border-r border-white/10 bg-slate-900/40 backdrop-blur">
+          <div className="p-4 border-b border-white/10">
+            <div className="text-xs uppercase tracking-widest text-slate-400">{CONFIG.brand.badge}</div>
+            <div className="font-black text-lg">{CONFIG.brand.name}</div>
+          </div>
+
+          <nav className="p-2">
+            {sections.map((sec) => (
+              <div key={sec.label} className="mb-3">
+                <div className="px-2 py-1 text-xs uppercase tracking-widest text-slate-400">{sec.label}</div>
+                <div className="mt-1 space-y-1">
+                  {sec.items.map((it) => (
+                    <button
+                      key={it.id}
+                      onClick={() => onSelect(it.id)}
+                      className={`w-full text-left px-3 py-2 rounded-xl transition border flex items-center gap-2 ${
+                        activeId === it.id
+                          ? "bg-amber-500 text-slate-900 border-amber-400"
+                          : "border-white/10 hover:bg-white/5"
+                      }`}
+                    >
+                      <span className="text-base">{it.icon}</span>
+                      <div>
+                        <div className="font-semibold text-sm">{it.name}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </nav>
+
+          <div className="p-3 mt-auto text-[11px] text-slate-500">
+            <div>v0.7 — Painel Unificado (hierarquia somente leitura)</div>
+          </div>
+        </aside>
+      );
+    }
+
+    function Topbar({ title }) {
+      return (
+        <header className="sticky top-0 z-10 bg-slate-950/70 backdrop-blur border-b border-white/10">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg grid place-items-center font-black border border-amber-500/40 bg-slate-900/60">R</div>
+            <div className="font-bold">{title}</div>
+          </div>
+        </header>
+      );
+    }
+
+    function Frame({ url, sandbox }) {
+      const [loaded, setLoaded] = useState(false);
+      const [blocked, setBlocked] = useState(false);
+
+      // Converte /preview para docs; mantém outras URLs
+      const resolvedUrl = useMemo(() => toEmbedUrl(url), [url]);
+
+      useEffect(() => {
+        setLoaded(false);
+        setBlocked(false);
+      }, [resolvedUrl]);
+
+      useEffect(() => {
+        const t = setTimeout(() => { if (!loaded) setBlocked(true); }, 5000);
+        return () => clearTimeout(t);
+      }, [loaded, resolvedUrl]);
+
+      // Sandbox mais restrito: sem same-origin e sem forms; impede scripts do iframe de mexerem fora dele
+      const iframeSandbox = sandbox ?? 'allow-scripts allow-downloads';
+
+      return (
+        <div className="relative h-[calc(100vh-120px)]">
+          {!loaded && (
+            <div className="absolute inset-0 grid place-items-center text-slate-400">
+              <div className="px-3 py-2 rounded-xl border border-white/10 bg-slate-900/60 text-sm">
+                Carregando conteúdo…
+              </div>
+            </div>
+          )}
+          {blocked && (
+            <div className="absolute top-3 right-3 px-3 py-2 rounded-xl border border-amber-400/30 bg-amber-500/10 text-amber-200 text-xs">
+              Caso o documento não permita incorporação, verifique permissões do Google.
+            </div>
+          )}
+          <iframe
+            title="app-frame"
+            src={resolvedUrl}
+            className="w-full h-full rounded-xl border border-white/10 bg-slate-950"
+            referrerPolicy="no-referrer"
+            sandbox={iframeSandbox}
+            onLoad={() => setLoaded(true)}
+          ></iframe>
+        </div>
+      );
+    }
+
+    function App() {
+      const flatItems = useMemo(() => CONFIG.sections.flatMap(s => s.items), []);
+      const [active, setActive] = useState(flatItems[0]?.id || "");
+      const activeItem = useMemo(() => flatItems.find(x => x.id === active), [active, flatItems]);
+
+      return (
+        <div className="min-h-screen bg-slate-950 text-slate-100">
+          <Topbar title={activeItem?.name || CONFIG.brand.name} />
+          <div className="max-w-7xl mx-auto p-4 flex gap-4">
+            <Sidebar
+              sections={CONFIG.sections}
+              activeId={active}
+              onSelect={setActive}
+            />
+            <main className="flex-1">
+              {/* Renderização condicional: hierarquia vira viewer local somente-leitura */}
+              {activeItem?.type === 'hierarquia' ? (
+                <HierarquiaViewer dataUrl={RAW_LINKS.hierarquiaData} />
+              ) : (
+                <Frame url={activeItem?.url || ""} sandbox={activeItem?.sandbox || null} />
+              )}
+            </main>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
 </body>
 </html>
