@@ -11,9 +11,6 @@
   .panel{display:grid; grid-template-columns: 340px 1fr; gap:1rem;}
   .scroll{overflow:auto}
   .card{background:linear-gradient(135deg,#0b1220 0%, #0e172a 100%); border:1px solid rgba(255,255,255,.08)}
-  .chip{display:inline-flex;align-items:center;gap:.5rem;padding:.15rem .55rem;border-radius:999px;font-size:.75rem;font-weight:700;letter-spacing:.2px;border:1px solid transparent}
-  .chip.green{background:rgba(34,197,94,.15);color:rgb(134,239,172);border-color:rgba(34,197,94,.3)}
-  .chip.red{background:rgba(239,68,68,.15);color:rgb(252,165,165);border-color:rgba(239,68,68,.3)}
   .grad-head{position:sticky;top:0;z-index:5;background:rgba(2,6,23,.95);backdrop-filter:blur(6px);padding:.4rem .5rem;border-bottom:1px solid rgba(255,255,255,.1);color:#facc15;text-transform:uppercase;font-weight:700}
   .item{padding:.55rem .65rem;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer}
   .item:hover{background:rgba(255,255,255,.04)}
@@ -24,6 +21,9 @@
   .photo{width:104px;height:140px;border-radius:.75rem;background:#0b1220;border:1px solid rgba(255,255,255,.08);display:grid;place-items:center;color:#94a3b8}
   .btn{padding:.5rem .75rem;border:1px solid rgba(255,255,255,.12);border-radius:.65rem;background:transparent}
   .btn:hover{background:rgba(255,255,255,.06)}
+  .chip{display:inline-flex;align-items:center;gap:.5rem;padding:.15rem .55rem;border-radius:999px;font-size:.75rem;font-weight:700;letter-spacing:.2px;border:1px solid transparent}
+  .chip.green{background:rgba(34,197,94,.15);color:rgb(134,239,172);border-color:rgba(34,197,94,.3)}
+  .chip.red{background:rgba(239,68,68,.15);color:rgb(252,165,165);border-color:rgba(239,68,68,.3)}
   /* selects visíveis no dark */
   select{background-color:#0d1322!important;color:#e5e7eb!important;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:4px 6px;font-weight:500;appearance:none}
   select option{background-color:#0d1322!important;color:#e5e7eb!important}
@@ -47,10 +47,9 @@
       <p class="text-sm text-slate-400">Selecione um policial à esquerda para ver a carteirinha</p>
     </div>
     <div class="ml-auto flex flex-wrap items-center gap-2">
-      <div class="relative">
-        <input id="q" class="w-64 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60" placeholder="Buscar por nome, matrícula, patente..." />
-      </div>
+      <input id="q" class="w-64 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60" placeholder="Buscar por nome, matrícula, patente..." />
       <button id="btnAdd" class="btn text-xs">+ Adicionar</button>
+      <button id="btnAddSection" class="btn text-xs">+ Seção</button>
       <button id="btnSaveJSON" class="btn text-xs">Baixar JSON</button>
       <label class="btn text-xs cursor-pointer">Carregar JSON<input id="inJSON" type="file" accept="application/json" class="hidden"></label>
       <label class="btn text-xs cursor-pointer">Importar CSV<input id="inCSV" type="file" accept=".csv,text/csv" class="hidden"></label>
@@ -72,7 +71,7 @@
 </div>
 
 <script>
-/* ========= COLUNAS / CAMPOS ========= */
+/* ========= CAMPOS ========= */
 const COLUMNS = [
   { key:"matricula",       label:"Matrícula",             type:"text" },
   { key:"nome",            label:"Nome",                  type:"text" },
@@ -93,6 +92,13 @@ const COLUMNS = [
   { key:"pad",             label:"PAD",                   type:"text" },
 ];
 
+/* ========= ORDENAÇÃO DE PATENTES ========= */
+const RANK_WEIGHT = {
+  "CEL PM":100, "TEN.CEL PM":90, "MAJ PM":80, "CAP PM":70,
+  "1º TEN PM":60, "2º TEN PM":50, "ASP OF PM":40,
+  "SUBTEN PM":35, "1º SGT PM":34, "2º SGT PM":33, "3º SGT PM":32,
+  "CB PM":20, "SD PM":10, "ALUNO":1
+};
 const GRAD_ORDER = [
   { label:"Oficiais Superiores",    match: p => /(^CEL\b|TEN\.?CEL|MAJ)/i.test(p) },
   { label:"Oficiais Intermediários",match: p => /\bCAP\b/i.test(p) },
@@ -104,6 +110,7 @@ function patenteToGraduacao(p=""){
   const up = String(p||"").toUpperCase();
   return (GRAD_ORDER.find(g=>g.match(up))||GRAD_ORDER[GRAD_ORDER.length-1]).label;
 }
+const rankVal = p => RANK_WEIGHT[p?.toUpperCase?.()] ?? 0;
 
 /* ========= DADOS INICIAIS ========= */
 const INITIAL = [
@@ -125,15 +132,43 @@ let ROWS = loadLocal() || INITIAL.slice();
 let selectedIndex = -1;
 const listPane = document.getElementById('listPane');
 const cardPane = document.getElementById('cardPane');
+const qEl = document.getElementById('q');
 
 /* ========= LISTA ========= */
 function renderList(q=""){
   listPane.innerHTML = "";
   const normQ = norm(q);
 
-  // agrupa por graduação
+  const hasCustomSections = ROWS.some(r=>r.type==="section");
+
+  if (hasCustomSections) {
+    // Respeita a ordem e as seções criadas pelo usuário
+    let started=false;
+    ROWS.forEach((entry, i) => {
+      if (entry.type==="section") {
+        const head = document.createElement('div');
+        head.className="grad-head";
+        head.textContent = entry.title || "SEÇÃO";
+        listPane.appendChild(head);
+        started=true;
+        return;
+      }
+      if (normQ && !COLUMNS.some(c=>norm(entry[c.key]).includes(normQ))) return;
+      // item
+      appendItem(entry, i);
+    });
+    if(!started){ // se o JSON tiver só seções no final etc.
+      const none=document.createElement('div');
+      none.className="text-slate-400 p-3"; none.textContent="Nenhum registro na seção.";
+      listPane.appendChild(none);
+    }
+    return;
+  }
+
+  // Agrupamento por graduação (automático)
   const groups = {};
   ROWS.forEach((r,i)=>{
+    if (r.type==="section") return; // ignora seções se não for modo personalizado
     if (normQ && !COLUMNS.some(c=>norm(r[c.key]).includes(normQ))) return;
     const g = patenteToGraduacao(r.patente);
     (groups[g] ||= []).push({r,i});
@@ -147,23 +182,14 @@ function renderList(q=""){
     head.textContent = g.label;
     listPane.appendChild(head);
 
-    arr.sort((a,b)=> norm(a.r.nome)<norm(b.r.nome)?-1:1);
-    arr.forEach(({r,i})=>{
-      const item = document.createElement('div');
-      item.className = "item";
-      if(i===selectedIndex) item.classList.add('active');
-      item.innerHTML = `
-        <div class="flex items-center justify-between">
-          <div>
-            <div class="font-semibold">${r.nome||"-"} <span class="text-xs text-slate-400">(${r.guerra||"-"})</span></div>
-            <div class="text-xs text-slate-400">${r.matricula||"-"} • ${r.patente||"-"}</div>
-          </div>
-          ${r.licenca_premium?'<span class="chip green">Premium</span>':'<span class="chip red">Sem Premium</span>'}
-        </div>
-      `;
-      item.addEventListener('click',()=>{ selectedIndex=i; renderList(q); renderCard(); });
-      listPane.appendChild(item);
+    // Ordena por peso de patente (desc) e depois por nome
+    arr.sort((a,b)=>{
+      const rw = rankVal(b.r.patente) - rankVal(a.r.patente);
+      if (rw!==0) return rw;
+      return norm(a.r.nome) < norm(b.r.nome) ? -1 : 1;
     });
+
+    arr.forEach(({r,i})=> appendItem(r,i));
   });
 
   if(!listPane.children.length){
@@ -172,6 +198,18 @@ function renderList(q=""){
     empty.textContent="Nenhum registro encontrado.";
     listPane.appendChild(empty);
   }
+}
+
+function appendItem(r,i){
+  const item = document.createElement('div');
+  item.className = "item";
+  if(i===selectedIndex) item.classList.add('active');
+  item.innerHTML = `
+    <div class="font-semibold">${r.nome||"-"} <span class="text-xs text-slate-400">(${r.guerra||"-"})</span></div>
+    <div class="text-xs text-slate-400">${r.matricula||"-"} • ${r.patente||"-"}</div>
+  `;
+  item.addEventListener('click',()=>{ selectedIndex=i; renderList(qEl.value); renderCard(); });
+  listPane.appendChild(item);
 }
 
 /* ========= CARTEIRINHA ========= */
@@ -223,7 +261,6 @@ function renderCard(){
   `;
   cardPane.appendChild(grid);
 
-  // Ações
   document.getElementById('btnPrint').onclick = () => window.print();
   document.getElementById('btnDelete').onclick = () => {
     if(confirm("Remover este registro?")){
@@ -234,7 +271,6 @@ function renderCard(){
   document.getElementById('btnEdit').onclick = () => toggleEdit(true);
 
   function toggleEdit(on){
-    // transforma todos .value em inputs
     const nodes = cardPane.querySelectorAll('[data-key]');
     nodes.forEach(node=>{
       const key = node.dataset.key;
@@ -267,7 +303,6 @@ function renderCard(){
         node.replaceChildren(inp);
         return;
       }
-      // text / multiline
       const ed = document.createElement(col?.multiline?'textarea':'input');
       if(col?.multiline){ ed.rows = 3; }
       ed.className="bg-transparent border border-white/10 rounded-md px-2 py-1 text-sm w-full";
@@ -276,14 +311,12 @@ function renderCard(){
       node.replaceChildren(ed);
     });
 
-    // troca botão Editar por Concluir
     const b = document.getElementById('btnEdit');
     b.textContent = "Concluir";
     b.onclick = ()=> renderCard();
   }
 
   function field(label,key,value,asSelect=false, mode="text"){
-    // mode: "text" | "date" | "select-situacao"
     return `
       <div class="lbl">${label}</div>
       <div class="value" data-key="${key}">
@@ -312,16 +345,21 @@ function renderCard(){
 }
 
 /* ========= BUSCA ========= */
-const qEl = document.getElementById('q');
 qEl.addEventListener('input', ()=> renderList(qEl.value));
 
-/* ========= CONTROLES SUPERIORES ========= */
+/* ========= CONTROLES ========= */
 document.getElementById('btnAdd').onclick = ()=>{
   const novo = Object.fromEntries(COLUMNS.map(c=>[c.key,""]));
   novo.patente = "CB PM";
   ROWS.push(novo);
   selectedIndex = ROWS.length-1;
   persist(); renderList(qEl.value); renderCard();
+};
+
+document.getElementById('btnAddSection').onclick = ()=>{
+  const t = prompt("Título da seção:", "NOVA SEÇÃO");
+  ROWS.push({ type:"section", title: (t||"NOVA SEÇÃO").trim() });
+  persist(); renderList(qEl.value);
 };
 
 document.getElementById('btnSaveJSON').onclick = ()=>{
@@ -372,6 +410,7 @@ document.getElementById('btnSaveCSV').onclick = ()=>{
   const rows = [];
   rows.push(COLUMNS.map(c=>c.label));
   ROWS.forEach(r=>{
+    if(r.type==="section") return; // não exporta seções
     rows.push(COLUMNS.map(col=>{
       let v = r[col.key] ?? "";
       if(col.type==='flag') v = (v ? (col.trueLabel||'SIM') : (col.falseLabel||'NÃO'));
