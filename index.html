@@ -6,6 +6,8 @@
 <title>Carteirinhas do Batalhão — RP</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={darkMode:'class',theme:{extend:{}}}</script>
+<!-- Supabase JS v2 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   html,body{height:100%} body{background:#020617}
   .panel{display:grid; grid-template-columns: 340px 1fr; gap:1rem;}
@@ -109,8 +111,16 @@
 </div>
 
 <script>
-/* ============ AUTENTICAÇÃO (client-side) ============ */
-/* Senha: TropaDoBezerra2025  (hash abaixo) */
+/* ========= CONFIG SUPABASE ========= */
+const SUPABASE_URL = "https://ilonwkgtdszmpcjwlezc.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlsb253a2d0ZHN6bXBjandsZXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5NzQxMDIsImV4cCI6MjA3NTU1MDEwMn0.Cc-BtnHlXaGVCY6T6iXe0QA1tsfc17aX8lswEICvtw0";
+const { createClient } = window.supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const TABLE = "carteirinhas_data";
+const ROW_ID = 1; // linha única compartilhada
+
+/* ========= AUTENTICAÇÃO (client-side) ========= */
+// Senha: TropaDoBezerra2025
 const STORED_PW_HASH = "d69c7dc7fe40c59c9a2b13810e7a32d2c0d41877c85666d267ff2dfcec4f28ac";
 
 let isAuthenticated = false;
@@ -134,7 +144,7 @@ btnLogout.addEventListener('click', ()=> { doLogout(); });
 
 async function sha256hex(str){
   if (!(window.crypto && crypto.subtle)) {
-    alert("Seu navegador/ambiente não suporta WebCrypto (SHA-256). O login seguro não estará disponível aqui.");
+    alert("Seu navegador/ambiente não suporta WebCrypto (SHA-256).");
     return "";
   }
   const enc = new TextEncoder();
@@ -173,12 +183,11 @@ function applyAuthUI(){
     btnLogout.style.display = "none";
     authModeEl.textContent = "Público";
   }
-  // sempre re-renderiza conforme o modo atual
   renderList(document.getElementById('q').value);
   renderCard();
 }
 
-/* ============ CAMPOS ============ */
+/* ========= CAMPOS ========= */
 const COLUMNS = [
   { key:"matricula",       label:"Matrícula",             type:"text" },
   { key:"nome",            label:"Nome",                  type:"text" },
@@ -200,7 +209,7 @@ const COLUMNS = [
   { key:"foto",            label:"Foto",                  type:"image" },
 ];
 
-/* ============ ORDENAÇÃO DE PATENTES ============ */
+/* ========= ORDENAÇÃO ========= */
 const RANK_WEIGHT = {
   "CEL PM":100, "TEN.CEL PM":90, "MAJ PM":80, "CAP PM":70,
   "1º TEN PM":60, "2º TEN PM":50, "ASP OF PM":40,
@@ -220,7 +229,7 @@ function patenteToGraduacao(p=""){
 }
 const rankVal = p => RANK_WEIGHT[p?.toUpperCase?.()] ?? 0;
 
-/* ============ DADOS INICIAIS ============ */
+/* ========= DADOS INICIAIS ========= */
 const INITIAL = [
   { matricula:"2410202230", nome:"Matheus Bezerra", guerra:"Bezerra", patente:"TEN.CEL PM",
     funcao:"COMANDANTE AGUIAR / COMANDANTE SINDICÂNCIA / COMANDANTE CCOMSOC",
@@ -236,13 +245,42 @@ const INITIAL = [
     turma:"", cia:"CMT. 1ª CIA", data_entrada:"2023-07-01", padrinhos:"-", pad:"0/3", foto:"" },
 ];
 
-let ROWS = loadLocal() || INITIAL.slice();
+let ROWS = [];             // carregadas do Supabase
 let selectedIndex = -1;
 const listPane = document.getElementById('listPane');
 const cardPane = document.getElementById('cardPane');
 const qEl = document.getElementById('q');
 
-/* ============ LISTA (com DnD e seções) ============ */
+/* ========= SINCRONIZAÇÃO REMOTA (Supabase) ========= */
+async function fetchRemote(){
+  // tenta ler id=1; se não existir, cria com INITIAL
+  let { data, error } = await sb.from(TABLE).select("rows").eq("id", ROW_ID).single();
+  if (error && error.code === 'PGRST116') { // not found
+    await sb.from(TABLE).upsert({ id: ROW_ID, rows: INITIAL });
+    ROWS = INITIAL.slice();
+    return;
+  }
+  if (error) {
+    console.error("Erro ao carregar Supabase:", error);
+    ROWS = INITIAL.slice(); // fallback
+    return;
+  }
+  ROWS = Array.isArray(data?.rows) ? data.rows : INITIAL.slice();
+}
+
+let saveTimer = null;
+function persistLocal(){ localStorage.setItem('rp.carteirinhas', JSON.stringify(ROWS)); }
+function scheduleSave(){
+  if(!isAuthenticated) return; // somente no modo edição
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveRemote, 400);
+}
+async function saveRemote(){
+  const { error } = await sb.from(TABLE).update({ rows: ROWS }).eq("id", ROW_ID);
+  if (error) console.error("Erro ao salvar no Supabase:", error);
+}
+
+/* ========= LISTA ========= */
 let dragIndex = null;
 
 function renderList(q=""){
@@ -264,7 +302,7 @@ function renderList(q=""){
         if(isAuthenticated) head.querySelector('.btn-sec-del').addEventListener('click', (ev)=>{
           ev.stopPropagation();
           if(confirm(`Excluir a seção "${entry.title||'SEÇÃO'}"?`)){
-            ROWS.splice(i,1); persist(); renderList(qEl.value);
+            ROWS.splice(i,1); persistLocal(); scheduleSave(); renderList(qEl.value);
           }
         });
         head.dataset.sectionIndex = i;
@@ -355,10 +393,10 @@ function moveItemToSection(itemIndex, sectionIndex){
   if(itemIndex < sectionIndex) dest = sectionIndex - 1;
   const insertAt = dest + 1;
   ROWS.splice(insertAt, 0, item);
-  persist(); renderList(qEl.value); renderCard();
+  persistLocal(); scheduleSave(); renderList(qEl.value); renderCard();
 }
 
-/* ============ CARTEIRINHA + FOTO ============ */
+/* ========= CARTEIRINHA ========= */
 function renderCard(){
   cardPane.innerHTML = "";
   if(selectedIndex<0 || !ROWS[selectedIndex] || ROWS[selectedIndex].type==="section"){
@@ -434,7 +472,7 @@ function renderCard(){
     document.getElementById('btnDelete').onclick = () => {
       if(confirm("Remover este registro?")){
         ROWS.splice(selectedIndex,1);
-        selectedIndex = -1; persist(); renderList(qEl.value); renderCard();
+        selectedIndex = -1; persistLocal(); scheduleSave(); renderList(qEl.value); renderCard();
       }
     };
     document.getElementById('btnEdit').onclick = () => toggleEdit(true);
@@ -452,7 +490,7 @@ function renderCard(){
         const btn = document.createElement('button');
         btn.className = "btn text-xs";
         btn.textContent = p[key] ? "Desativar Premium" : "Ativar Premium";
-        btn.onclick = ()=>{ p[key]=!p[key]; persist(); renderCard(); };
+        btn.onclick = ()=>{ p[key]=!p[key]; persistLocal(); scheduleSave(); renderCard(); };
         node.replaceChildren(btn);
         return;
       }
@@ -462,7 +500,7 @@ function renderCard(){
         (col.options||[]).forEach(opt=>{
           const o=document.createElement('option'); o.value=opt; o.textContent=opt; if(opt===current) o.selected=true; sel.appendChild(o);
         });
-        sel.onchange=()=>{ p[key]=sel.value; persist(); };
+        sel.onchange=()=>{ p[key]=sel.value; persistLocal(); scheduleSave(); };
         node.replaceChildren(sel);
         return;
       }
@@ -470,7 +508,7 @@ function renderCard(){
         const inp=document.createElement('input'); inp.type="date";
         inp.className="bg-transparent border border-white/10 rounded-md px-2 py-1 text-sm";
         if(current) inp.value=String(current).slice(0,10);
-        inp.onchange=()=>{ p[key]=inp.value; persist(); };
+        inp.onchange=()=>{ p[key]=inp.value; persistLocal(); scheduleSave(); };
         node.replaceChildren(inp);
         return;
       }
@@ -478,7 +516,7 @@ function renderCard(){
       if(col?.multiline){ ed.rows = 3; }
       ed.className="bg-transparent border border-white/10 rounded-md px-2 py-1 text-sm w-full";
       ed.value = current;
-      ed.onblur=()=>{ p[key]=ed.value.trim(); persist(); renderCard(); };
+      ed.onblur=()=>{ p[key]=ed.value.trim(); persistLocal(); scheduleSave(); renderCard(); };
       node.replaceChildren(ed);
     });
 
@@ -491,7 +529,7 @@ function renderCard(){
     header.appendChild(tools);
     tools.querySelector('#btnChangePhoto').onclick = ()=> openImagePicker(setPhotoFromFile);
     const rm = tools.querySelector('#btnRemovePhoto');
-    if(rm) rm.onclick = ()=>{ p.foto=""; persist(); renderCard(); };
+    if(rm) rm.onclick = ()=>{ p.foto=""; persistLocal(); scheduleSave(); renderCard(); };
 
     const b = document.getElementById('btnEdit');
     b.textContent = "Concluir";
@@ -536,29 +574,29 @@ function renderCard(){
     const reader = new FileReader();
     reader.onload = async ()=> {
       const resized = await resizeDataURL(reader.result, 420);
-      p.foto = resized; persist(); renderCard();
+      p.foto = resized; persistLocal(); scheduleSave(); renderCard();
     };
     reader.readAsDataURL(file);
   }
 }
 
-/* ============ BUSCA ============ */
+/* ========= BUSCA ========= */
 qEl.addEventListener('input', ()=> renderList(qEl.value));
 
-/* ============ CONTROLES ============ */
+/* ========= CONTROLES ========= */
 document.getElementById('btnAdd')?.addEventListener('click', ()=>{
   if(!isAuthenticated) return alert("Somente usuários autenticados podem adicionar.");
   const novo = Object.fromEntries(COLUMNS.map(c=>[c.key,""]));
   novo.patente = "CB PM";
   ROWS.push(novo);
   selectedIndex = ROWS.length-1;
-  persist(); renderList(qEl.value); renderCard();
+  persistLocal(); scheduleSave(); renderList(qEl.value); renderCard();
 });
 document.getElementById('btnAddSection')?.addEventListener('click', ()=>{
   if(!isAuthenticated) return alert("Somente usuários autenticados podem criar seções.");
   const t = prompt("Título da seção:", "NOVA SEÇÃO");
   ROWS.push({ type:"section", title: (t||"NOVA SEÇÃO").trim() });
-  persist(); renderList(qEl.value);
+  persistLocal(); scheduleSave(); renderList(qEl.value);
 });
 document.getElementById('btnSaveJSON')?.addEventListener('click', ()=>{
   if(!isAuthenticated) return alert("Somente usuários autenticados podem exportar JSON (com todas as seções).");
@@ -570,7 +608,7 @@ document.getElementById('inJSON')?.addEventListener('change', (e)=>{
   if(!isAuthenticated) return alert("Somente usuários autenticados podem importar JSON.");
   const f = e.target.files[0]; if(!f) return;
   const r = new FileReader(); r.onload = ()=>{
-    try{ ROWS = JSON.parse(r.result); selectedIndex=-1; persist(); renderList(qEl.value); renderCard(); }
+    try{ ROWS = JSON.parse(r.result); selectedIndex=-1; persistLocal(); scheduleSave(); renderList(qEl.value); renderCard(); }
     catch{ alert("JSON inválido"); }
   }; r.readAsText(f);
 });
@@ -601,7 +639,7 @@ document.getElementById('inCSV')?.addEventListener('change', (e)=>{
       });
       rows.push(obj);
     });
-    ROWS = rows; selectedIndex=-1; persist(); renderList(qEl.value); renderCard();
+    ROWS = rows; selectedIndex=-1; persistLocal(); scheduleSave(); renderList(qEl.value); renderCard();
   }; r.readAsText(f);
 });
 document.getElementById('btnSaveCSV')?.addEventListener('click', ()=>{
@@ -648,21 +686,18 @@ btnSaveCSV_public.addEventListener('click', ()=>{
   a.download="policiais_publico.csv"; a.click(); URL.revokeObjectURL(a.href);
 });
 
-/* ============ UTILS ============ */
+/* ========= UTILS ========= */
 function formatDate(v){
   const s=String(v); const d = new Date(s);
   if(!isFinite(d)) return s||"-";
   return d.toISOString().slice(0,10).split("-").reverse().join("/");
 }
-// compatível com todos: remove acentos sem \p{Diacritic}
 function norm(s){
   return String(s||"")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g,'')
     .toLowerCase();
 }
-function loadLocal(){ try{return JSON.parse(localStorage.getItem('rp.carteirinhas')||'null');}catch{return null;} }
-function persist(){ localStorage.setItem('rp.carteirinhas', JSON.stringify(ROWS)); }
 function parseCSV(txt){
   const rows=[];let i=0,f='',row=[],q=false;
   while(i<txt.length){const c=txt[i];
@@ -689,18 +724,21 @@ function resizeDataURL(dataUrl, maxW=420){
   });
 }
 
-/* ============ start (robusto) ============ */
+/* ========= BOOT ROBUSTO ========= */
 window.addEventListener('error', (e) => {
   console.error(e?.error || e);
   const pane = document.getElementById('cardPane');
   if (pane) pane.innerHTML = `<div class="text-red-300">Erro ao iniciar: ${String(e.message||e).replace(/</g,'&lt;')}</div>`;
 });
-function boot() {
-  applyAuthUI();                      // aplica modo salvo antes de renderizar
-  if (!Array.isArray(ROWS) || ROWS.length === 0) {
-    ROWS = INITIAL.slice(); persist();
+async function boot() {
+  applyAuthUI(); // aplica modo salvo antes de renderizar
+  try {
+    await fetchRemote();
+  } catch (err) {
+    console.error("Falha no fetch remoto:", err);
+    ROWS = INITIAL.slice();
   }
-  renderList("");                     // primeira render
+  renderList("");  // primeira renderização com dados remotos
   renderCard();
 }
 if (document.readyState === 'loading') {
